@@ -38,6 +38,8 @@ class _InputFieldState extends State<InputField> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Column(
       children: [
         if (widget.text.toLowerCase() != 'address')
@@ -46,7 +48,7 @@ class _InputFieldState extends State<InputField> {
             child: Text(
               capitalize(widget.text),
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: theme.colorScheme.onSecondary,
                   fontWeight: FontWeight.bold,
                   fontSize: 15),
             ),
@@ -98,32 +100,32 @@ class _InputFieldState extends State<InputField> {
             hintText: "Enter your ${widget.text}",
             hintStyle: TextStyle(
               fontStyle: FontStyle.italic,
-              color: Theme.of(context).colorScheme.tertiary,
+              color: theme.colorScheme.onBackground.withOpacity(0.4),
             ),
             errorText: widget.error,
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             border: OutlineInputBorder(
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.tertiary,
+                color: theme.colorScheme.primary,
               ),
               borderRadius: BorderRadius.circular(10),
             ),
             focusedBorder: OutlineInputBorder(
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
+                color: theme.colorScheme.primary,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(10),
             ),
             enabledBorder: OutlineInputBorder(
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.tertiary,
+                color: theme.colorScheme.primary,
               ),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          cursorColor: Theme.of(context).primaryColor,
+          cursorColor: theme.primaryColor,
         ),
       ],
     );
