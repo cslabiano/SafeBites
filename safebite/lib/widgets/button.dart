@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Button extends StatefulWidget {
-  // final Function callback;
-  final VoidCallback callback;
+  final Future<void> Function()? callback;
   final String text;
   final String type; // 'filled', 'outlined', 'text', 'elevated'
   const Button(

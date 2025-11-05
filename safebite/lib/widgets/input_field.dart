@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 class InputField extends StatefulWidget {
-  final Function callback;
+  // changed to onsaved for form usage, now allows null
+  final void Function(String?)? onSaved;
   final String text;
   final String label;
   final String type;
   final String? error;
   const InputField(
-      {required this.callback,
+      {required this.onSaved,
       required this.text,
       required this.label,
       required this.type,
@@ -20,13 +21,19 @@ class InputField extends StatefulWidget {
 
 class _InputFieldState extends State<InputField> {
   final TextEditingController _controller = TextEditingController();
-  // ignore: prefer_final_fields
   bool _obscureText = true;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  // function to toggle password visibility
+  void _toggleObscureText() {
+    setState(() {
+      _obscureText = !_obscureText;
+    });
   }
 
   String capitalize(String s) {
@@ -39,6 +46,9 @@ class _InputFieldState extends State<InputField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // determine if the input should be obscured
+    final isPassword = widget.type == "password";
 
     return Column(
       children: [
@@ -58,51 +68,55 @@ class _InputFieldState extends State<InputField> {
           keyboardType: widget.label == "number"
               ? TextInputType.number
               : TextInputType.text,
-          onSaved: (val) {
-            // ignore: avoid_print
-            print("Text value: ${val!}");
-          },
+          // now correctly calls the onSaved prop
+          onSaved: widget.onSaved,
           validator: (val) {
             if (val == null || val.isEmpty) {
-              return "Please enter your ${widget.text}";
+              return "please enter your ${widget.text}";
             }
             if (widget.type == "email") {
               final emailRegex =
                   RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
               if (!emailRegex.hasMatch(val)) {
-                return "Please enter a valid email format";
+                return "please enter a valid email format";
               }
             } else if (widget.type == "password") {
               final passwordRegex = RegExp(
                 r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+{};:,<.>]).{6,}$',
               );
               if (!passwordRegex.hasMatch(val)) {
-                return "Include at least one A-Z, a-z, 0-9, & special character";
+                return "include at least one a-z, a-z, 0-9, & special character";
               }
             } else if (widget.type == "address") {
-              // Basic address validation
+              // basic address validation
               if (val.length < 10) {
-                return "Address is too short";
+                return "address is too short";
               }
               if (!RegExp(r'[A-Za-z]').hasMatch(val) ||
                   !RegExp(r'\d').hasMatch(val)) {
-                return "Address must contain both letters and numbers";
+                return "address must contain both letters and numbers";
               }
             }
             return null;
           },
-          controller: _controller,
-          onChanged: (value) {
-            widget.callback(_controller.text);
-          },
-          obscureText: widget.type == "password" ? _obscureText : false,
+
+          obscureText: isPassword ? _obscureText : false,
           decoration: InputDecoration(
-            hintText: "Enter your ${widget.text}",
+            hintText: "enter your ${widget.text}",
             hintStyle: TextStyle(
               fontStyle: FontStyle.italic,
               color: theme.colorScheme.onBackground.withOpacity(0.4),
             ),
             errorText: widget.error,
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      _obscureText ? Icons.visibility : Icons.visibility_off,
+                      color: theme.colorScheme.primary,
+                    ),
+                    onPressed: _toggleObscureText,
+                  )
+                : null,
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             border: OutlineInputBorder(

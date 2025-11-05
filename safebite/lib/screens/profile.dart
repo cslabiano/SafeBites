@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:safebite/widgets/button.dart';
+import 'package:provider/provider.dart';
+import 'package:safebite/providers/auth_provider.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -12,8 +13,11 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   // User? user;
 
-  void _navigateToAuth() {
-    Navigator.pushNamed(context, '/signin');
+  Future<void> _navigateToAuth() async {
+    await context.read<UserAuthProvider>().signOut();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/signin');
+    }
   }
 
   @override
@@ -116,7 +120,7 @@ class _ProfileState extends State<Profile> {
                               style: TextStyle(fontSize: 16)),
                         ],
                       ),
-                      Button(callback: () {}, text: "Edit", type: "text"),
+                      Button(callback: () async {}, text: "Edit", type: "text"),
                     ],
                   ),
                   const Text(

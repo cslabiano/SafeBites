@@ -1,6 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'package:safebite/firebase_options.dart';
 import 'package:flutter/material.dart';
+
+// import providers
+import 'package:safebite/providers/auth_provider.dart';
 
 // import screens
 import 'screens/auth/sign_in.dart';
@@ -15,21 +19,20 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // runApp(
-  //   MultiProvider(
-  //     providers: [
-  //       ChangeNotifierProvider(create: ((context) => UserAuthProvider())),
-  //       ChangeNotifierProvider(create: ((context) => DonationProvider())),
-  //       ChangeNotifierProvider(create: ((context) => DonorProvider())),
-  //       ChangeNotifierProvider(create: ((context) => DonationDriveProvider())),
-  //       ChangeNotifierProvider(create: ((context) => OrganizationProvider())),
-  //       ChangeNotifierProvider(create: ((context) => AdminProvider()))
-  //     ],
-  //     child: const MainApp(),
-  //   ),
-  // );
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => UserAuthProvider(),
+      child: const MyApp(), // Your root application widget
+    ),
+    // MultiProvider(
+    //   providers: [
+    //     ChangeNotifierProvider(create: ((context) => UserAuthProvider())),
+    //   ],
+    //   child: const MyApp(),
+    // ),
+  );
 
-  runApp(const MyApp());
+  // runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -55,12 +58,37 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const Navbar(),
+        '/': (context) => const AuthGate(),
         '/signin': (context) => const SignIn(),
         '/signup': (context) => const SignUp(),
         '/navbar': (context) => const Navbar(),
         '/dashboard': (context) => const Dashboard(),
         '/profile': (context) => const Profile(),
+      },
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
+    return StreamBuilder(
+      stream: authProvider.userStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final user = snapshot.data;
+        if (user == null) {
+          return const SignIn();
+        }
+        return const Navbar();
       },
     );
   }
