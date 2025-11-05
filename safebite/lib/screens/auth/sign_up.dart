@@ -61,12 +61,17 @@ class _SignUpState extends State<SignUp> {
                   type: "password"),
               const SizedBox(height: 12),
 
-              Button(
-                  callback: _navigateToHome, text: "Sign up", type: "filled"),
-              Button(
-                  callback: _navigateToSignIn,
-                  text: "Already have an account? Sign in",
-                  type: "text"),
+              SizedBox(
+                width: double.infinity,
+                child: Button(
+                    callback: _navigateToHome, text: "Sign up", type: "filled"),
+              ),
+              Center(
+                child: Button(
+                    callback: _navigateToSignIn,
+                    text: "Already have an account? Sign in",
+                    type: "text"),
+              ),
             ],
           ),
         ),
