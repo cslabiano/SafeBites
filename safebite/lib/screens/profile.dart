@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:safebite/models/user_model.dart';
+import 'package:safebite/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:safebite/widgets/button.dart';
-import 'package:provider/provider.dart';
-import 'package:safebite/providers/auth_provider.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -11,8 +13,6 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  // User? user;
-
   Future<void> _navigateToAuth() async {
     await context.read<UserAuthProvider>().signOut();
     if (mounted) {
@@ -22,9 +22,10 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
-    // user = context.read<UserAuthProvider>().user;
-    const String user = "Myndie";
-    const String email = "myndie@gmail.com";
+    final userProvider = context.watch<UserAuthProvider>();
+    final nickname = userProvider.nickname ?? 'loading...';
+    final email = userProvider.user?.email ?? 'loading...';
+    final allergies = userProvider.allergies ?? [];
 
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
@@ -78,14 +79,14 @@ class _ProfileState extends State<Profile> {
                         color: theme.colorScheme.primary,
                       )),
                   SizedBox(width: screenWidth * 0.05),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user,
-                          style: TextStyle(
+                      Text(nickname,
+                          style: const TextStyle(
                               fontWeight: FontWeight.w500, fontSize: 16)),
                       Text(email,
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontWeight: FontWeight.w400, fontSize: 12)),
                     ],
                   ),

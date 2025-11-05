@@ -1,30 +1,32 @@
-import 'dart:convert';
-
 class UserModel {
   final String email;
   final String nickname;
-  final List<String>? allergies;
+  final List<String> allergies;
 
-  UserModel({required this.email, required this.nickname, this.allergies});
+  // set allergies to const [] as default for new users
+  UserModel({
+    required this.email,
+    required this.nickname,
+    this.allergies = const [],
+  });
 
-  // Factory constructor to instantiate object from json format
+  // factory constructor to create a UserModel from a Firestore map
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final List<dynamic> rawAllergies = json['allergies'] ?? [];
+
     return UserModel(
-        email: json['email'],
-        nickname: json['nickname'],
-        allergies: List<String>.from(json['allergies']));
+      email: json['email'] as String,
+      nickname: json['nickname'] as String,
+      allergies: rawAllergies.map((a) => a.toString()).toList(),
+    );
   }
 
-  static List<UserModel> fromJsonArray(String jsonData) {
-    final Iterable<dynamic> data = jsonDecode(jsonData);
-    return data.map<UserModel>((dynamic d) => UserModel.fromJson(d)).toList();
-  }
-
-  Map<String, dynamic> toJson(UserModel UserModel) {
+  // method to convert UserModel to a map for Firestore storage
+  Map<String, dynamic> toJson() {
     return {
-      'email': UserModel.email,
-      'nickname': UserModel.nickname,
-      'allergies': UserModel.allergies,
+      'email': email,
+      'nickname': nickname,
+      'allergies': allergies,
     };
   }
 }
