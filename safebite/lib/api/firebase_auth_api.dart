@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 class FirebaseAuthAPI {
   static final FirebaseAuth auth = FirebaseAuth.instance;
   static final FirebaseFirestore db = FirebaseFirestore.instance;
+  static const String userCollection = 'users';
 
   User? getUser() {
     return auth.currentUser;
@@ -13,6 +14,21 @@ class FirebaseAuthAPI {
   Stream<User?> userSignedIn() {
     // status ng authentication, may nakasign in ba or wala
     return auth.authStateChanges();
+  }
+
+  Future<UserModel?> getUserModel(String uid) async {
+    try {
+      final doc = await db.collection(userCollection).doc(uid).get();
+      if (doc.exists) {
+        // assuming UserModel has a fromJson factory constructor
+        return UserModel.fromJson(doc.data()!);
+      }
+      return null;
+    } catch (e) {
+      // ignore: avoid_print
+      print("error fetching user model: $e");
+      return null;
+    }
   }
 
   Future<String?> signIn(String email, String password) async {
@@ -35,20 +51,22 @@ class FirebaseAuthAPI {
         password: password,
       );
 
-      // set the nickname as the Firebase User's displayName (best-effort)
-      try {
-        await userCredential.user?.updateDisplayName(newUser.nickname);
-      } catch (e) {
-        // ignore display name update failures so sign up can succeed
+      final uid = userCredential.user?.uid;
+      if (uid != null) {
+        await db.collection(userCollection).doc(uid).set({
+          'email': newUser.email,
+          'nickname': newUser.nickname,
+          'allergies': newUser.allergies ?? [],
+        });
       }
 
       return null;
     } on FirebaseAuthException catch (e) {
-      return e.code; // return the specific Firebase error code
+      return e.code; // return the specific firebase error code
     } catch (e) {
       // ignore: avoid_print
       print(e);
-      return "An unknown error occurred.";
+      return "an unknown error occurred.";
     }
   }
 
