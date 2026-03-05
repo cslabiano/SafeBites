@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/allergen_card.dart';
 import '../widgets/searchbar.dart';
+import '../database/food_repository.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -13,9 +14,15 @@ class _DashboardState extends State<Dashboard> {
   final TextEditingController _searchController = TextEditingController();
   String _searchText = '';
 
+  final FoodRepository repo = FoodRepository();
+  List allergens = [];
+
   @override
   void initState() {
     super.initState();
+
+    loadAllergens();
+
     // listen for text changes to update the state and redraw the clear button
     _searchController.addListener(() {
       setState(() {
@@ -31,6 +38,14 @@ class _DashboardState extends State<Dashboard> {
 
   void _handleSearch(String query) {
     print('Searching for: $query');
+  }
+
+  Future<void> loadAllergens() async {
+    var result = await repo.getAllergens();
+
+    setState(() {
+      allergens = result;
+    });
   }
 
   @override
@@ -74,14 +89,30 @@ class _DashboardState extends State<Dashboard> {
                     hintText: "Search food, ingredients, or allergen"),
 
                 // default dashboard when search is empty
-                if (_searchText.isEmpty) 
-                  AllergenCard(
-                    onTap: () {},
-                    title: "Milk",
-                    subtitle:
-                        "Allergy to cow's milk is the most common food allergy in infants and young children. About 2.5 percent of children under age 3 are allergic to milk, and most of these children develop milk allergy in their first year of life",
-                    iconData: Icons.warning_amber_outlined,
-                    iconColor: const Color.fromRGBO(240, 158, 12, 1),
+                if (_searchText.isEmpty)
+                  // AllergenCard(
+                  //   onTap: () {},
+                  //   title: "Milk",
+                  //   subtitle:
+                  //       "Allergy to cow's milk is the most common food allergy in infants and young children. About 2.5 percent of children under age 3 are allergic to milk, and most of these children develop milk allergy in their first year of life",
+                  //   iconData: Icons.warning_amber_outlined,
+                  //   iconColor: const Color.fromRGBO(240, 158, 12, 1),
+                  // )
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const  NeverScrollableScrollPhysics(),
+                    itemCount: allergens.length,
+                    itemBuilder: (context, index) {
+                      var allergen = allergens[index];
+
+                      return AllergenCard(
+                        onTap: () {},
+                        title: allergen["name"],
+                        subtitle: allergen["short_description"] ?? "",
+                        iconData: Icons.warning_amber_outlined,
+                        iconColor: const Color.fromRGBO(240, 158, 12, 1),
+                      );
+                    },
                   )
 
                 // display search results
