@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:safebite/screens/allergen_details.dart';
 import '../widgets/allergen_card.dart';
 import '../widgets/searchbar.dart';
 import '../database/food_repository.dart';
+import '../widgets/food_card.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -16,6 +18,7 @@ class _DashboardState extends State<Dashboard> {
 
   final FoodRepository repo = FoodRepository();
   List allergens = [];
+  List foods = [];
 
   @override
   void initState() {
@@ -36,8 +39,19 @@ class _DashboardState extends State<Dashboard> {
     setState(() {});
   }
 
-  void _handleSearch(String query) {
-    print('Searching for: $query');
+  Future<void> _handleSearch(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        foods = [];
+      });
+      return;
+    }
+
+    var results = await repo.searchFoods(query);
+
+    setState(() {
+      foods = results;
+    });
   }
 
   Future<void> loadAllergens() async {
@@ -79,7 +93,7 @@ class _DashboardState extends State<Dashboard> {
                 const Text("Stay safe with personalized food recommendations",
                     style:
                         TextStyle(fontSize: 14, fontWeight: FontWeight.w300)),
-                SizedBox(height: screenHeight * 0.3),
+                SizedBox(height: screenHeight * 0.03),
 
                 // search bar
                 SearchBarWidget(
@@ -90,23 +104,29 @@ class _DashboardState extends State<Dashboard> {
 
                 // default dashboard when search is empty
                 if (_searchText.isEmpty)
-                  // AllergenCard(
-                  //   onTap: () {},
-                  //   title: "Milk",
-                  //   subtitle:
-                  //       "Allergy to cow's milk is the most common food allergy in infants and young children. About 2.5 percent of children under age 3 are allergic to milk, and most of these children develop milk allergy in their first year of life",
-                  //   iconData: Icons.warning_amber_outlined,
-                  //   iconColor: const Color.fromRGBO(240, 158, 12, 1),
-                  // )
+
+                  // View today's top three recommendations
+
+                  // View list of common allergens
                   ListView.builder(
                     shrinkWrap: true,
-                    physics: const  NeverScrollableScrollPhysics(),
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: allergens.length,
                     itemBuilder: (context, index) {
                       var allergen = allergens[index];
 
                       return AllergenCard(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AllergenDetailsPage(
+                                  title: allergen["name"],
+                                  information: allergen["more_information"],
+                                  sourceLink: allergen["source_link"]),
+                            ),
+                          );
+                        },
                         title: allergen["name"],
                         subtitle: allergen["short_description"] ?? "",
                         iconData: Icons.warning_amber_outlined,
@@ -117,19 +137,21 @@ class _DashboardState extends State<Dashboard> {
 
                 // display search results
                 else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24.0),
-                    child: Center(
-                      child: Text(
-                        "Searching results for \"$_searchText\"...",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontStyle: FontStyle.italic,
-                            color:
-                                theme.colorScheme.onSurface.withOpacity(0.7)),
-                      ),
-                    ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: foods.length,
+                    itemBuilder: (context, index) {
+                      var food = foods[index];
+
+                      return FoodCard(
+                        onTap: () {
+                          // optional: open food details page
+                        },
+                        title: food["name"],
+                        ingredients: food["ingredients"] ?? "",
+                      );
+                    },
                   ),
               ],
             )));

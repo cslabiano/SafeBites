@@ -1,27 +1,19 @@
 import 'package:flutter/material.dart';
 
-class AllergenCard extends StatelessWidget {
+class FoodCard extends StatelessWidget {
   final VoidCallback onTap;
   final String title;
-  final String subtitle;
-  final IconData iconData;
-  final Color iconColor;
-
-  const AllergenCard({
-    required this.onTap,
-    required this.title,
-    required this.subtitle,
-    required this.iconData,
-    required this.iconColor,
-    super.key,
-  });
+  final String ingredients;
+  const FoodCard(
+      {required this.onTap,
+      required this.title,
+      required this.ingredients,
+      super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // InkWell and Material are used together to allow for the ripple effect
-    // while maintaining the custom border styling on the card itself.
     return Material(
       color: Colors
           .transparent, // Ensures the Material background doesn't interfere
@@ -45,12 +37,6 @@ class AllergenCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment
                     .start, // No spaceBetween needed as there is no Edit button
                 children: [
-                  Icon(
-                    iconData,
-                    size: 18,
-                    color: iconColor,
-                  ),
-                  const SizedBox(width: 8),
                   Text(
                     title,
                     style: const TextStyle(
@@ -62,13 +48,25 @@ class AllergenCard extends StatelessWidget {
               ),
               const SizedBox(
                   height: 4), // Small vertical space between title and subtitle
-              Text(
-                subtitle,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-              ),
+              Row(
+                children: [
+                  const Text(
+                    "Ingredients: ",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                  ),
+                  Expanded(
+                    child: Text(
+                      ingredients,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              )
             ],
           ),
         ),

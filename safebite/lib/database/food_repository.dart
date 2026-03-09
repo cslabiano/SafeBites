@@ -93,4 +93,25 @@ class FoodRepository {
     final result = await db.query("user_allergies");
     return result.map((e) => e["allergen_id"].toString()).toList();
   }
+
+  // SEARCH FOOD
+  Future<List<Map<String, dynamic>>> searchFoods(String query) async {
+    final db = await _databaseHelper.database;
+
+    final result = await db.rawQuery('''
+  SELECT 
+    foods.id,
+    foods.name,
+    GROUP_CONCAT(ingredients.name, ', ') AS ingredients
+  FROM foods
+  LEFT JOIN food_ingredients 
+    ON foods.id = food_ingredients.food_id
+  LEFT JOIN ingredients
+    ON ingredients.id = food_ingredients.ingredient_id
+  WHERE foods.name LIKE ?
+  GROUP BY foods.id
+  ''', ['%$query%']);
+
+    return result;
+  }
 }
