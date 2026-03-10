@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:safebite/models/user_model.dart';
+import 'package:safebite/providers/auth_provider.dart';
+
+// import widgets
 import '/widgets/input_field.dart';
 import '/widgets/button.dart';
 
@@ -11,16 +16,46 @@ class SignUp extends StatefulWidget {
 
 class _SignUpState extends State<SignUp> {
   final _formKey = GlobalKey<FormState>();
-  late String email;
-  late String password;
+  late UserModel newUser;
+  String nickname = '';
+  String email = '';
+  String password = '';
   String? errorMessage;
 
-  void _navigateToSignIn() {
+  Future<void> _navigateToSignIn() async {
     Navigator.pushNamed(context, '/signin');
   }
 
-  void _navigateToHome() {
-    Navigator.pushNamed(context, '/navbar');
+  Future<void> _navigateToHome() async {
+    Navigator.pushReplacementNamed(context, '/navbar');
+  }
+
+  // function to handle the sign-up process
+  Future<void> _signUp() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      setState(() {
+        errorMessage = null;
+      });
+
+      final newUser = UserModel(email: email, nickname: nickname);
+
+      String? result =
+          await context.read<UserAuthProvider>().signUp(newUser, password);
+
+      if (result != null) {
+        // set error message if sign-up fails
+        setState(() {
+          errorMessage = result;
+        });
+      } else {
+        // navigate to home on successful sign-up
+        if (context.mounted) {
+          _navigateToHome();
+        }
+      }
+    }
   }
 
   @override
@@ -45,28 +80,59 @@ class _SignUpState extends State<SignUp> {
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary)),
               const SizedBox(height: 24),
+
+              // nickname textfield
+              InputField(
+                  // using onsaved for form submission
+                  onSaved: (String? val) => nickname = val ?? '',
+                  text: "nickname",
+                  label: "nickname",
+                  type: "text"),
+              const SizedBox(height: 12),
+
               // email textfield
               InputField(
-                  callback: (String val) => email = val,
+                  // using onsaved for form submission
+                  onSaved: (String? val) => email = val ?? '',
                   text: "email",
                   label: "email",
                   type: "email"),
               const SizedBox(height: 12),
 
-              // password testfield
+              // password textfield
               InputField(
-                  callback: (String val) => password = val,
+                  // using onsaved for form submission
+                  onSaved: (String? val) => password = val ?? '',
                   text: "password",
                   label: "password",
                   type: "password"),
               const SizedBox(height: 12),
 
-              Button(
-                  callback: _navigateToHome, text: "Sign up", type: "filled"),
-              Button(
-                  callback: _navigateToSignIn,
-                  text: "Already have an account? Sign in",
-                  type: "text"),
+              SizedBox(
+                width: double.infinity,
+                child: Button(
+                    // call the async sign up function
+                    callback: _signUp,
+                    text: "Sign up",
+                    type: "filled"),
+              ),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  errorMessage!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+
+              Center(
+                child: Button(
+                    callback: _navigateToSignIn,
+                    text: "Already have an account? Sign in",
+                    type: "text"),
+              ),
             ],
           ),
         ),

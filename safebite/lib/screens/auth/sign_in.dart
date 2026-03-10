@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:safebite/providers/auth_provider.dart';
+
+// import widgets
 import '/widgets/input_field.dart';
 import '/widgets/button.dart';
 
@@ -11,16 +15,43 @@ class SignIn extends StatefulWidget {
 
 class _SignInState extends State<SignIn> {
   final _formKey = GlobalKey<FormState>();
-  late String email;
-  late String password;
+  String email = '';
+  String password = '';
   String? errorMessage;
 
-  void _navigateToSignUp() {
+  Future<void> _navigateToSignUp() async {
     Navigator.pushNamed(context, '/signup');
   }
 
-  void _navigateToHome() {
-    Navigator.pushNamed(context, '/navbar');
+  Future<void> _navigateToHome() async {
+    Navigator.pushReplacementNamed(context, '/navbar');
+  }
+
+  // function to handle the sign-in process
+  Future<void> _handleSignIn() async {
+    if (_formKey.currentState!.validate()) {
+      // call onSaved for all form fields to update email and password
+      _formKey.currentState!.save();
+
+      setState(() {
+        errorMessage = null;
+      });
+
+      // call sign-in via provider and handle errors
+      String? result =
+          await context.read<UserAuthProvider>().signIn(email, password);
+
+      if (result != null) {
+        setState(() {
+          errorMessage = result;
+        });
+      } else {
+        // navigate to home on successful sign-in
+        if (context.mounted) {
+          _navigateToHome();
+        }
+      }
+    }
   }
 
   @override
@@ -47,7 +78,7 @@ class _SignInState extends State<SignIn> {
               const SizedBox(height: 24),
               // email textfield
               InputField(
-                  callback: (String val) => email = val,
+                  onSaved: (String? val) => email = val ?? '',
                   text: "email",
                   label: "email",
                   type: "email"),
@@ -55,18 +86,33 @@ class _SignInState extends State<SignIn> {
 
               // password testfield
               InputField(
-                  callback: (String val) => password = val,
+                  onSaved: (String? val) => password = val ?? '',
                   text: "password",
                   label: "password",
                   type: "password"),
               const SizedBox(height: 12),
 
-              Button(
-                  callback: _navigateToHome, text: "Sign in", type: "filled"),
-              Button(
-                  callback: _navigateToSignUp,
-                  text: "Don't have an account? Sign up",
-                  type: "text"),
+              SizedBox(
+                width: double.infinity,
+                child: Button(
+                    callback: _handleSignIn, text: "Sign in", type: "filled"),
+              ),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  errorMessage!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              Center(
+                child: Button(
+                    callback: _navigateToSignUp,
+                    text: "Don't have an account? Sign up",
+                    type: "text"),
+              ),
             ],
           ),
         ),

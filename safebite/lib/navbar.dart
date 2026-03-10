@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/dashboard.dart';
+import 'screens/dashboard/dashboard.dart';
 import 'screens/camera.dart';
 import 'screens/profile.dart';
 
@@ -35,8 +35,8 @@ class _NavbarState extends State<Navbar> {
           ),
           BottomNavigationBarItem(
             icon: _selectedIndex == 1
-                ? const Icon(Icons.inventory)
-                : const Icon(Icons.inventory_outlined),
+                ? const Icon(Icons.photo_camera)
+                : const Icon(Icons.photo_camera_outlined),
             label: 'Donations',
           ),
           BottomNavigationBarItem(
