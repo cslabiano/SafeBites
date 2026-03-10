@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 
 // import providers
 import 'package:safebite/providers/auth_provider.dart';
+import 'package:safebite/providers/allergies_provider.dart';
 
 // import screens
 import 'screens/auth/sign_in.dart';
 import 'screens/auth/sign_up.dart';
 import 'navbar.dart';
-import 'screens/dashboard.dart';
+import 'screens/dashboard/dashboard.dart';
 import 'screens/profile.dart';
 
 Future<void> main() async {
@@ -20,17 +21,17 @@ Future<void> main() async {
   );
 
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => UserAuthProvider(),
-      child: const MyApp(), // Your root application widget
-    ),
-    // MultiProvider(
-    //   providers: [
-    //     ChangeNotifierProvider(create: ((context) => UserAuthProvider())),
-    //   ],
-    //   child: const MyApp(),
-    // ),
-  );
+      // ChangeNotifierProvider(
+      //   create: (context) => UserAuthProvider(),
+      //   child: const MyApp(), // Your root application widget
+      // ),
+      MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => UserAuthProvider()),
+      ChangeNotifierProvider(create: (_) => AllergiesProvider()),
+    ],
+    child: const MyApp(),
+  ));
 
   // runApp(const MyApp());
 }
