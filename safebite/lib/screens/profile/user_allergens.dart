@@ -20,6 +20,7 @@ class UserAllergens extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(12.0)),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -58,8 +59,12 @@ class UserAllergens extends StatelessWidget {
                 spacing: 8,
                 children: allergies.map((a) {
                   return Chip(
-                    label: Text(a),
-                    backgroundColor: Colors.orange.shade100,
+                    label: Text(a,
+                        style: TextStyle(color: theme.colorScheme.primary)),
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        side: const BorderSide(color: Colors.transparent)),
                   );
                 }).toList(),
               );

@@ -30,9 +30,7 @@ class _ProfileState extends State<Profile> {
     final nickname = userProvider.nickname ?? 'loading...';
     final email = userProvider.user?.email ?? 'loading...';
 
-    double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -65,7 +63,7 @@ class _ProfileState extends State<Profile> {
 
             // displays user's food allergens
             SizedBox(height: screenHeight * 0.03),
-            UserAllergens(),
+            const UserAllergens(),
 
             // displays safety reminders
             SizedBox(height: screenHeight * 0.03),
