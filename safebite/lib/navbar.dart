@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/dashboard/dashboard.dart';
-import 'screens/camera.dart';
+import 'screens/camera/camera.dart';
 import 'screens/profile/profile.dart';
 
 class Navbar extends StatefulWidget {
@@ -37,7 +37,7 @@ class _NavbarState extends State<Navbar> {
             icon: _selectedIndex == 1
                 ? const Icon(Icons.photo_camera)
                 : const Icon(Icons.photo_camera_outlined),
-            label: 'Donations',
+            label: 'Camera',
           ),
           BottomNavigationBarItem(
             icon: _selectedIndex == 2
