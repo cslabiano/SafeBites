@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/dashboard/dashboard.dart';
 import 'screens/camera.dart';
-import 'screens/profile.dart';
+import 'screens/profile/profile.dart';
 
 class Navbar extends StatefulWidget {
   const Navbar({super.key});

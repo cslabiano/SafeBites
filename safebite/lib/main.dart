@@ -12,7 +12,7 @@ import 'screens/auth/sign_in.dart';
 import 'screens/auth/sign_up.dart';
 import 'navbar.dart';
 import 'screens/dashboard/dashboard.dart';
-import 'screens/profile.dart';
+import 'screens/profile/profile.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
