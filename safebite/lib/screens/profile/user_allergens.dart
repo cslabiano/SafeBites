@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:safebite/providers/allergies_provider.dart';
 import 'package:safebite/widgets/button.dart';
+import 'allergen_dialog.dart';
 
 class UserAllergens extends StatelessWidget {
   const UserAllergens({super.key});
@@ -32,13 +35,36 @@ class UserAllergens extends StatelessWidget {
                   Text("Food Allergens", style: TextStyle(fontSize: 16)),
                 ],
               ),
-              Button(callback: () async {}, text: "Edit", type: "text"),
+              Button(
+                  callback: () async {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const AllergenDialog(),
+                    );
+                  },
+                  text: "Edit",
+                  type: "text"),
             ],
           ),
           const Text(
             "Manage your food allergies and dietary restrictions",
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
           ),
+          Consumer<AllergiesProvider>(
+            builder: (context, allergiesProvider, child) {
+              final allergies = allergiesProvider.allergies;
+
+              return Wrap(
+                spacing: 8,
+                children: allergies.map((a) {
+                  return Chip(
+                    label: Text(a),
+                    backgroundColor: Colors.orange.shade100,
+                  );
+                }).toList(),
+              );
+            },
+          )
         ],
       ),
     );

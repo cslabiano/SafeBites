@@ -29,7 +29,6 @@ class _ProfileState extends State<Profile> {
     final userProvider = context.watch<UserAuthProvider>();
     final nickname = userProvider.nickname ?? 'loading...';
     final email = userProvider.user?.email ?? 'loading...';
-    final allergies = userProvider.allergies ?? [];
 
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;

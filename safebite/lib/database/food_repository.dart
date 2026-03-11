@@ -39,7 +39,7 @@ class FoodRepository {
       SELECT ingredients.name, food_ingredients.is_optional
       FROM ingredients
       JOIN food_ingredients
-      ON ingredients.id = food_ingredients.ingredient_id
+        ON ingredients.id = food_ingredients.ingredient_id
       WHERE food_ingredients.food_id = ?
       AND ingredients.name IS NOT NULL
       AND TRIM(ingredients.name) != ''
@@ -56,9 +56,9 @@ class FoodRepository {
       SELECT DISTINCT allergens.name
       FROM allergens
       JOIN ingredient_allergens
-      ON allergens.id = ingredient_allergens.allergen_id
+        ON allergens.id = ingredient_allergens.allergen_id
       JOIN food_ingredients
-      ON ingredient_allergens.ingredient_id = food_ingredients.ingredient_id
+        ON ingredient_allergens.ingredient_id = food_ingredients.ingredient_id
       WHERE food_ingredients.food_id = ?
     ''', [foodId]);
 
@@ -82,7 +82,7 @@ class FoodRepository {
     return null;
   }
 
-  /// GET ALL ALLERGENS
+  /// GET ALL ALLERGENS (used for allergen selection UI)
   Future<List<Map<String, dynamic>>> getAllergens() async {
     final db = await _databaseHelper.database;
 
@@ -91,16 +91,7 @@ class FoodRepository {
     return result;
   }
 
-  /// GET USER ALLERGIES
-  Future<List<String>> getUserAllergies() async {
-    final db = await _databaseHelper.database;
-
-    final result = await db.query("user_allergies");
-
-    return result.map((e) => e["allergen_id"].toString()).toList();
-  }
-
-  /// SEARCH FOOD (FAST VERSION)
+  /// SEARCH FOODS
   Future<List<Map<String, dynamic>>> searchFoods(String query) async {
     final db = await _databaseHelper.database;
 
@@ -130,11 +121,12 @@ class FoodRepository {
     return result;
   }
 
-  /// DAILY SAFE FOOD RECOMMENDATIONS
+  /// GET SAFE FOODS BASED ON USER ALLERGIES
   Future<List<Map<String, dynamic>>> getSafeFoods(
       List<String> allergies) async {
     final db = await _databaseHelper.database;
 
+    /// If user has no allergies → return all foods
     if (allergies.isEmpty) {
       return await db.rawQuery('''
         SELECT 
