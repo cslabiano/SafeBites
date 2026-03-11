@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:safebite/widgets/button.dart';
 import 'safety_reminders.dart';
+import 'user_details.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -59,41 +60,7 @@ class _ProfileState extends State<Profile> {
 
             // displays name and email in a card
             SizedBox(height: screenHeight * 0.03),
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                  border: Border.all(
-                    color: theme.colorScheme.secondary,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(12.0)),
-              child: Row(
-                children: [
-                  Container(
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary,
-                          borderRadius: BorderRadius.circular(100.0)),
-                      child: Icon(
-                        Icons.person,
-                        size: 32,
-                        color: theme.colorScheme.primary,
-                      )),
-                  SizedBox(width: screenWidth * 0.05),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(nickname,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w500, fontSize: 16)),
-                      Text(email,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w400, fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            UserDetails(nickname: nickname, email: email),
 
             // displays user's food allergens
             SizedBox(height: screenHeight * 0.03),
