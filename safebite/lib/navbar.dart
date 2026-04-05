@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
 
 import 'screens/dashboard/dashboard.dart';
 import 'screens/camera/camera.dart';
 import 'screens/profile/profile.dart';
 
 class Navbar extends StatefulWidget {
-  const Navbar({super.key});
+  final List<CameraDescription> cameras;
+
+  const Navbar({
+    super.key,
+    required this.cameras,
+  });
 
   @override
   State<Navbar> createState() => _NavbarState();
@@ -14,6 +20,18 @@ class Navbar extends StatefulWidget {
 class _NavbarState extends State<Navbar> {
   int _selectedIndex = 0;
 
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const Dashboard(),
+      Camera(cameras: widget.cameras),
+      const Profile(),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -21,11 +39,17 @@ class _NavbarState extends State<Navbar> {
       body: SafeArea(
         child: IndexedStack(
           index: _selectedIndex,
-          children: const <Widget>[Dashboard(), Camera(), Profile()],
+          children: _pages,
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: (int index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: _selectedIndex == 0
@@ -46,14 +70,6 @@ class _NavbarState extends State<Navbar> {
             label: 'Profile',
           ),
         ],
-        currentIndex: _selectedIndex,
-        onTap: (int index) {
-          setState(
-            () {
-              _selectedIndex = index;
-            },
-          );
-        },
       ),
     );
   }
