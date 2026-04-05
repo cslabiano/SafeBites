@@ -42,4 +42,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 build/ 
+**/build/
+*.apk
+.dart_tool/
 safebite/build/ 
