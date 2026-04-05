@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:safebite/firebase_options.dart';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
 
 // import providers
 import 'package:safebite/providers/auth_provider.dart';
@@ -12,34 +13,34 @@ import 'screens/auth/sign_in.dart';
 import 'screens/auth/sign_up.dart';
 import 'navbar.dart';
 import 'screens/dashboard/dashboard.dart';
-import 'screens/profile.dart';
+import 'screens/profile/profile.dart';
+import 'screens/camera/camera.dart';
+
+late final List<CameraDescription> cameras;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(
-      // ChangeNotifierProvider(
-      //   create: (context) => UserAuthProvider(),
-      //   child: const MyApp(), // Your root application widget
-      // ),
-      MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (_) => UserAuthProvider()),
-      ChangeNotifierProvider(create: (_) => AllergiesProvider()),
-    ],
-    child: const MyApp(),
-  ));
+  cameras = await availableCameras();
 
-  // runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserAuthProvider()),
+        ChangeNotifierProvider(create: (_) => AllergiesProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // root of the application
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -62,9 +63,10 @@ class MyApp extends StatelessWidget {
         '/': (context) => const AuthGate(),
         '/signin': (context) => const SignIn(),
         '/signup': (context) => const SignUp(),
-        '/navbar': (context) => const Navbar(),
+        '/navbar': (context) => Navbar(cameras: cameras),
         '/dashboard': (context) => const Dashboard(),
         '/profile': (context) => const Profile(),
+        '/camera': (context) => Camera(cameras: cameras),
       },
     );
   }
@@ -76,6 +78,7 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
+
     return StreamBuilder(
       stream: authProvider.userStream,
       builder: (context, snapshot) {
@@ -86,10 +89,12 @@ class AuthGate extends StatelessWidget {
         }
 
         final user = snapshot.data;
+
         if (user == null) {
           return const SignIn();
         }
-        return const Navbar();
+
+        return Navbar(cameras: cameras);
       },
     );
   }

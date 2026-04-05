@@ -50,4 +50,18 @@ class AllergiesProvider with ChangeNotifier {
     _allergies.remove(allergen);
     notifyListeners();
   }
+
+  // update allergy
+  Future<void> setAllergies(List<String> allergens) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _firestore
+        .collection("users")
+        .doc(user.uid)
+        .update({"allergies": allergens});
+
+    _allergies = allergens;
+    notifyListeners();
+  }
 }

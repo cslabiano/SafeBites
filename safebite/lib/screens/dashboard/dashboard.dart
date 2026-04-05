@@ -26,6 +26,8 @@ class _DashboardState extends State<Dashboard> {
   List<Map<String, dynamic>> safeDailyFoods = [];
   List<Map<String, dynamic>> foods = [];
 
+  List<String> _lastLoadedAllergies = [];
+
   @override
   void initState() {
     super.initState();
@@ -38,14 +40,10 @@ class _DashboardState extends State<Dashboard> {
       });
     });
 
+    /// Fetch allergies initially
     Future.microtask(() async {
-      final allergies = context.read<AllergiesProvider>().allergies;
-
-      final dailyFoods = await controller.loadDailyFoods(allergies);
-
-      setState(() {
-        safeDailyFoods = dailyFoods;
-      });
+      final allergiesProvider = context.read<AllergiesProvider>();
+      await allergiesProvider.fetchAllergies();
     });
   }
 
@@ -54,6 +52,14 @@ class _DashboardState extends State<Dashboard> {
 
     setState(() {
       allergens = List<Map<String, dynamic>>.from(result);
+    });
+  }
+
+  Future<void> loadSafeFoods(List<String> allergies) async {
+    final dailyFoods = await controller.loadDailyFoods(allergies);
+
+    setState(() {
+      safeDailyFoods = dailyFoods;
     });
   }
 
@@ -78,6 +84,17 @@ class _DashboardState extends State<Dashboard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     double screenHeight = MediaQuery.of(context).size.height;
+
+    /// WATCH PROVIDER (this triggers rebuild when allergies change)
+    final allergiesProvider = context.watch<AllergiesProvider>();
+    final currentAllergies = allergiesProvider.allergies;
+
+    /// Reload safe foods only if allergies changed
+    if (_lastLoadedAllergies.toString() != currentAllergies.toString() ||
+        safeDailyFoods.isEmpty) {
+      _lastLoadedAllergies = List.from(currentAllergies);
+      Future.microtask(() => loadSafeFoods(currentAllergies));
+    }
 
     return Scaffold(
       appBar: AppBar(
