@@ -23,6 +23,7 @@ class _DashboardState extends State<Dashboard> {
   List<Map<String, dynamic>> allergens = [];
   List<Map<String, dynamic>> featuredFoods = [];
   List<Map<String, dynamic>> foods = [];
+  List<String> selectedExcludedAllergens = [];
 
   @override
   void initState() {
@@ -51,12 +52,14 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> loadFeaturedFoods() async {
-    final result = await controller.loadFeaturedFoods();
+    final result = await controller.loadFeaturedFoods(
+      excludedAllergens: selectedExcludedAllergens,
+    );
 
     if (!mounted) return;
 
     setState(() {
-      featuredFoods = List<Map<String, dynamic>>.from(result);
+      featuredFoods = result;
     });
   }
 

@@ -41,8 +41,14 @@ class _CameraState extends State<Camera>
   Future<void> _initializeCamera() async {
     if (widget.cameras.isEmpty) return;
 
+    // ✅ find back camera
+    final backCamera = widget.cameras.firstWhere(
+      (camera) => camera.lensDirection == cam.CameraLensDirection.back,
+      orElse: () => widget.cameras.first,
+    );
+
     final controller = cam.CameraController(
-      widget.cameras[_cameraIndex],
+      backCamera,
       cam.ResolutionPreset.medium,
       enableAudio: false,
     );
@@ -52,39 +58,6 @@ class _CameraState extends State<Camera>
 
     if (mounted) {
       setState(() {});
-    }
-  }
-
-  Future<void> _switchCamera() async {
-    if (widget.cameras.length < 2 || _isProcessing) return;
-
-    setState(() {
-      _isProcessing = true;
-    });
-
-    try {
-      _cameraIndex = (_cameraIndex + 1) % widget.cameras.length;
-
-      await _controller?.dispose();
-
-      final controller = cam.CameraController(
-        widget.cameras[_cameraIndex],
-        cam.ResolutionPreset.medium,
-        enableAudio: false,
-      );
-
-      _controller = controller;
-      _initializeControllerFuture = controller.initialize();
-
-      await _initializeControllerFuture;
-    } catch (e) {
-      _showError('Failed to switch camera.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
     }
   }
 
@@ -221,17 +194,19 @@ class _CameraState extends State<Camera>
                   child: cam.CameraPreview(controller),
                 ),
                 Positioned(
-                  top: 20,
-                  right: 20,
+                  top: MediaQuery.of(context).padding.top + 10,
+                  left: 20,
                   child: Container(
                     decoration: const BoxDecoration(
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      onPressed: _switchCamera,
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
                       icon: const Icon(
-                        Icons.cameraswitch,
+                        Icons.arrow_back,
                         color: Colors.white,
                       ),
                     ),
