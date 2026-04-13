@@ -9,10 +9,12 @@ class AllergensSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: allergens.length,
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: 12), // 👈 spacing
       itemBuilder: (context, index) {
         var allergen = allergens[index];
 

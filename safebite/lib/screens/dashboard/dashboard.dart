@@ -102,7 +102,6 @@ class _DashboardState extends State<Dashboard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
@@ -120,21 +119,28 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
         ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(20),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Search foods and view allergen information',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 75),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Search foods and view allergen information',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-            SizedBox(height: screenHeight * 0.03),
-
             /// SEARCH BAR
             SearchBarWidget(
               controller: _searchController,
