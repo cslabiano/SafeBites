@@ -26,7 +26,6 @@ class _CameraState extends State<Camera>
 
   final ImagePicker _imagePicker = ImagePicker();
 
-  int _cameraIndex = 0;
   bool _isProcessing = false;
 
   @override
@@ -49,7 +48,7 @@ class _CameraState extends State<Camera>
 
     final controller = cam.CameraController(
       backCamera,
-      cam.ResolutionPreset.medium,
+      cam.ResolutionPreset.high,
       enableAudio: false,
     );
 
@@ -191,7 +190,19 @@ class _CameraState extends State<Camera>
             return Stack(
               children: [
                 Positioned.fill(
-                  child: cam.CameraPreview(controller),
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.center,
+                      child: FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: controller.value.previewSize!.height,
+                          height: controller.value.previewSize!.width,
+                          child: cam.CameraPreview(controller),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
                   top: MediaQuery.of(context).padding.top + 10,
