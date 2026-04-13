@@ -26,7 +26,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Poppins',
         colorScheme: const ColorScheme.light(
-          background: Color.fromRGBO(240, 253, 250, 1),
+          // background: Color.fromRGBO(240, 253, 250, 1),
+          background: Color.fromRGBO(255, 255, 255, 1),
           onBackground: Color.fromRGBO(15, 23, 42, 1),
           primary: Color.fromRGBO(13, 148, 136, 1),
           onPrimary: Colors.white,

@@ -26,7 +26,7 @@ class SearchBarWidget extends StatelessWidget {
         decoration: InputDecoration(
           // styling the container
           filled: true,
-          fillColor: theme.colorScheme.secondary.withOpacity(0.5),
+          fillColor: theme.colorScheme.secondary.withOpacity(0.4),
           contentPadding:
               const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
           border: OutlineInputBorder(
@@ -48,11 +48,11 @@ class SearchBarWidget extends StatelessWidget {
           // hint text and icon
           hintText: hintText,
           hintStyle:
-              TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
+              TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5)),
 
           prefixIcon: Icon(
             Icons.search,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            color: theme.colorScheme.onSurface.withOpacity(0.5),
           ),
 
           // clear button
