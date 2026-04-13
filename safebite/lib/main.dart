@@ -1,19 +1,8 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
-import 'package:safebite/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 
-// import providers
-import 'package:safebite/providers/auth_provider.dart';
-import 'package:safebite/providers/allergies_provider.dart';
-
 // import screens
-import 'screens/auth/sign_in.dart';
-import 'screens/auth/sign_up.dart';
-import 'navbar.dart';
 import 'screens/dashboard/dashboard.dart';
-import 'screens/profile/profile.dart';
 import 'screens/camera/camera.dart';
 
 late final List<CameraDescription> cameras;
@@ -21,21 +10,9 @@ late final List<CameraDescription> cameras;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
   cameras = await availableCameras();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => UserAuthProvider()),
-        ChangeNotifierProvider(create: (_) => AllergiesProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -60,41 +37,8 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const AuthGate(),
-        '/signin': (context) => const SignIn(),
-        '/signup': (context) => const SignUp(),
-        '/navbar': (context) => Navbar(cameras: cameras),
-        '/dashboard': (context) => const Dashboard(),
-        '/profile': (context) => const Profile(),
+        '/': (context) => const Dashboard(),
         '/camera': (context) => Camera(cameras: cameras),
-      },
-    );
-  }
-}
-
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
-
-    return StreamBuilder(
-      stream: authProvider.userStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final user = snapshot.data;
-
-        if (user == null) {
-          return const SignIn();
-        }
-
-        return Navbar(cameras: cameras);
       },
     );
   }

@@ -4,13 +4,17 @@ import '../../database/food_repository.dart';
 class DashboardController {
   final FoodRepository repo = FoodRepository();
 
-  Future<List> loadAllergens() async {
-    return await repo.getAllergens();
+  Future<List<Map<String, dynamic>>> loadAllergens() async {
+    final result = await repo.getAllergens();
+    return List<Map<String, dynamic>>.from(result);
   }
 
-  Future<List<Map<String, dynamic>>> loadDailyFoods(
-      List<String> allergies) async {
-    final result = await repo.getSafeFoods(allergies);
+  Future<List<Map<String, dynamic>>> loadFeaturedFoods({
+    List<String> excludedAllergens = const [],
+  }) async {
+    final result = excludedAllergens.isEmpty
+        ? await repo.getFoods()
+        : await repo.getSafeFoods(excludedAllergens);
 
     if (result.isEmpty) return [];
 
@@ -24,8 +28,10 @@ class DashboardController {
     return foods.take(min(3, foods.length)).toList();
   }
 
-  Future<List> searchFoods(String query) async {
-    if (query.isEmpty) return [];
-    return await repo.searchFoods(query);
+  Future<List<Map<String, dynamic>>> searchFoods(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    final result = await repo.searchFoods(query.trim());
+    return List<Map<String, dynamic>>.from(result);
   }
 }

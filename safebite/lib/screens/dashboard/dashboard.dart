@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:safebite/providers/allergies_provider.dart';
 
 import '../../widgets/searchbar.dart';
 import 'dashboard_controller.dart';
@@ -23,48 +21,60 @@ class _DashboardState extends State<Dashboard> {
   String _searchText = '';
 
   List<Map<String, dynamic>> allergens = [];
-  List<Map<String, dynamic>> safeDailyFoods = [];
+  List<Map<String, dynamic>> featuredFoods = [];
   List<Map<String, dynamic>> foods = [];
-
-  List<String> _lastLoadedAllergies = [];
 
   @override
   void initState() {
     super.initState();
 
     loadAllergens();
+    loadFeaturedFoods();
 
     _searchController.addListener(() {
+      if (!mounted) return;
+
       setState(() {
         _searchText = _searchController.text;
       });
-    });
-
-    /// Fetch allergies initially
-    Future.microtask(() async {
-      final allergiesProvider = context.read<AllergiesProvider>();
-      await allergiesProvider.fetchAllergies();
     });
   }
 
   Future<void> loadAllergens() async {
     final result = await controller.loadAllergens();
 
+    if (!mounted) return;
+
     setState(() {
       allergens = List<Map<String, dynamic>>.from(result);
     });
   }
 
-  Future<void> loadSafeFoods(List<String> allergies) async {
-    final dailyFoods = await controller.loadDailyFoods(allergies);
+  Future<void> loadFeaturedFoods() async {
+    final result = await controller.loadFeaturedFoods();
+
+    if (!mounted) return;
 
     setState(() {
-      safeDailyFoods = dailyFoods;
+      featuredFoods = List<Map<String, dynamic>>.from(result);
     });
   }
 
   Future<void> _handleSearch(String query) async {
-    final results = await controller.searchFoods(query);
+    final trimmedQuery = query.trim();
+
+    if (trimmedQuery.isEmpty) {
+      if (!mounted) return;
+
+      setState(() {
+        foods = [];
+      });
+      return;
+    }
+
+    final results = await controller.searchFoods(trimmedQuery);
+
+    if (!mounted) return;
 
     setState(() {
       foods = List<Map<String, dynamic>>.from(results);
@@ -81,28 +91,25 @@ class _DashboardState extends State<Dashboard> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    double screenHeight = MediaQuery.of(context).size.height;
-
-    /// WATCH PROVIDER (this triggers rebuild when allergies change)
-    final allergiesProvider = context.watch<AllergiesProvider>();
-    final currentAllergies = allergiesProvider.allergies;
-
-    /// Reload safe foods only if allergies changed
-    if (_lastLoadedAllergies.toString() != currentAllergies.toString() ||
-        safeDailyFoods.isEmpty) {
-      _lastLoadedAllergies = List.from(currentAllergies);
-      Future.microtask(() => loadSafeFoods(currentAllergies));
-    }
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Container(
-          padding: const EdgeInsets.only(top: 24),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 20),
           child: Text(
-            "Dashboard",
+            'SafeBite',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 28,
@@ -110,22 +117,19 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Stay safe with personalized food recommendations",
+              'Search foods and view allergen information',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w300,
               ),
             ),
-
             SizedBox(height: screenHeight * 0.03),
 
             /// SEARCH BAR
@@ -133,7 +137,7 @@ class _DashboardState extends State<Dashboard> {
               controller: _searchController,
               onChanged: _handleSearch,
               onClear: _handleClear,
-              hintText: "Search food, ingredients, or allergen",
+              hintText: 'Search food or ingredient',
             ),
 
             const SizedBox(height: 20),
@@ -141,7 +145,7 @@ class _DashboardState extends State<Dashboard> {
             /// DEFAULT DASHBOARD
             if (_searchText.isEmpty) ...[
               const Text(
-                "Today's Safe Picks",
+                'Featured Foods',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -149,12 +153,12 @@ class _DashboardState extends State<Dashboard> {
               ),
               const SizedBox(height: 10),
               DailyFoodSection(
-                foods: safeDailyFoods,
+                foods: featuredFoods,
                 repo: controller.repo,
               ),
               const SizedBox(height: 20),
               const Text(
-                "Common Allergens",
+                'Common Allergens',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -174,6 +178,14 @@ class _DashboardState extends State<Dashboard> {
               ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        onPressed: () {
+          Navigator.pushNamed(context, '/camera');
+        },
+        child: const Icon(Icons.camera_alt_rounded),
       ),
     );
   }
