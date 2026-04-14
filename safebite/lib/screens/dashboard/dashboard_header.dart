@@ -4,7 +4,7 @@ class DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
   const DashboardHeader({super.key});
 
   @override
-  Size get preferredSize => const Size.fromHeight(100);
+  Size get preferredSize => const Size.fromHeight(90);
 
   @override
   Widget build(BuildContext context) {
@@ -14,31 +14,31 @@ class DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      toolbarHeight: 90, // 👈 IMPORTANT FIX
+
       title: Padding(
-        padding: const EdgeInsets.only(top: 20),
-        child: Text(
-          'SafeBite',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 28,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ),
-      bottom: const PreferredSize(
-        preferredSize: Size.fromHeight(20),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'SafeBite',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 28,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
               'Search foods and view allergen information',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w300,
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
