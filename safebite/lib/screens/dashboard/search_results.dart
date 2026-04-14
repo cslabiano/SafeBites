@@ -49,6 +49,7 @@ class SearchResults extends StatelessWidget {
               ),
             );
           },
+          iconData: Icons.fastfood_outlined,
           title: food['name'] ?? 'Unknown food',
           ingredients: food['ingredients'] ?? 'No ingredients available',
         );

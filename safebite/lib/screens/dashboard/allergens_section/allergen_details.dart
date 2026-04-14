@@ -18,7 +18,7 @@ class AllergenDetailsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Allergen Details'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

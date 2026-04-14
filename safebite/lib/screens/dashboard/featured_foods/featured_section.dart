@@ -100,7 +100,6 @@ class FeaturedSection extends StatelessWidget {
               final food = foods[index];
 
               return FoodCard(
-                index: index,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -113,6 +112,7 @@ class FeaturedSection extends StatelessWidget {
                     ),
                   );
                 },
+                iconData: Icons.restaurant_outlined,
                 title: food["name"],
                 ingredients: food["ingredients"] ?? "N/A",
               );

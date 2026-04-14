@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class FoodCard extends StatelessWidget {
-  final int? index;
   final VoidCallback onTap;
   final String title;
   final String ingredients;
+  final IconData iconData;
   const FoodCard(
-      {this.index,
+      {required this.iconData,
       required this.onTap,
       required this.title,
       required this.ingredients,
@@ -36,12 +36,15 @@ class FoodCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  Icon(iconData,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
                   Text(
                     title,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w500),
                   ),
-                ],
+                ]
               ),
               const SizedBox(height: 4),
               Row(

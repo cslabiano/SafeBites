@@ -24,7 +24,8 @@ class FoodDetailsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Food Details'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        // 👈 ADD THIS
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
