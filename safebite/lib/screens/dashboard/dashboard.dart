@@ -25,12 +25,13 @@ class _DashboardState extends State<Dashboard> {
   List<Map<String, dynamic>> foods = [];
   List<String> selectedExcludedAllergens = [];
 
+  bool _isLoadingFeaturedFoods = true;
+  bool _isLoadingAllergens = true;
+
   @override
   void initState() {
     super.initState();
-
-    loadAllergens();
-    loadFeaturedFoods();
+    _initializeDashboard();
 
     _searchController.addListener(() {
       if (!mounted) return;
@@ -41,17 +42,33 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
+  Future<void> _initializeDashboard() async {
+    await Future.wait([
+      loadAllergens(),
+      loadFeaturedFoods(),
+    ]);
+  }
+
   Future<void> loadAllergens() async {
+    setState(() {
+      _isLoadingAllergens = true;
+    });
+
     final result = await controller.loadAllergens();
 
     if (!mounted) return;
 
     setState(() {
       allergens = List<Map<String, dynamic>>.from(result);
+      _isLoadingAllergens = false;
     });
   }
 
   Future<void> loadFeaturedFoods() async {
+    setState(() {
+      _isLoadingFeaturedFoods = true;
+    });
+
     final result = await controller.loadFeaturedFoods(
       excludedAllergens: selectedExcludedAllergens,
     );
@@ -59,7 +76,8 @@ class _DashboardState extends State<Dashboard> {
     if (!mounted) return;
 
     setState(() {
-      featuredFoods = result;
+      featuredFoods = List<Map<String, dynamic>>.from(result);
+      _isLoadingFeaturedFoods = false;
     });
   }
 
@@ -91,6 +109,142 @@ class _DashboardState extends State<Dashboard> {
       foods = [];
       _searchText = '';
     });
+  }
+
+  Future<void> _openFeaturedFoodFilter() async {
+    final tempSelection = List<String>.from(selectedExcludedAllergens);
+
+    final result = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Exclude allergens',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Choose one or more allergens to exclude from today’s featured foods.',
+                    ),
+                    const SizedBox(height: 16),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: allergens.map((allergen) {
+                            final allergenName =
+                                allergen['name']?.toString() ?? '';
+
+                            final isSelected =
+                                tempSelection.contains(allergenName);
+
+                            return CheckboxListTile(
+                              value: isSelected,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(allergenName),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              onChanged: (checked) {
+                                setModalState(() {
+                                  if (checked == true) {
+                                    if (!tempSelection.contains(allergenName)) {
+                                      tempSelection.add(allergenName);
+                                    }
+                                  } else {
+                                    tempSelection.remove(allergenName);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempSelection.clear();
+                            });
+                          },
+                          child: const Text('Clear all'),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () {
+                            Navigator.pop(context, tempSelection);
+                          },
+                          child: const Text('Apply'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      selectedExcludedAllergens = result;
+    });
+
+    await loadFeaturedFoods();
+  }
+
+  Widget _buildSelectedFilters(ThemeData theme) {
+    if (selectedExcludedAllergens.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: selectedExcludedAllergens.map((allergen) {
+          return Chip(
+            label: Text(allergen),
+            onDeleted: () async {
+              setState(() {
+                selectedExcludedAllergens.remove(allergen);
+              });
+              await loadFeaturedFoods();
+            },
+            backgroundColor: theme.colorScheme.secondaryContainer,
+            labelStyle: TextStyle(
+              color: theme.colorScheme.onSecondaryContainer,
+            ),
+            side: BorderSide.none,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   @override
@@ -141,30 +295,47 @@ class _DashboardState extends State<Dashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// SEARCH BAR
             SearchBarWidget(
               controller: _searchController,
               onChanged: _handleSearch,
               onClear: _handleClear,
               hintText: 'Search food or ingredient',
             ),
-
             const SizedBox(height: 20),
-
-            /// DEFAULT DASHBOARD
             if (_searchText.isEmpty) ...[
-              const Text(
-                'Featured Foods',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Featured Foods',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed:
+                        allergens.isEmpty ? null : _openFeaturedFoodFilter,
+                    icon: const Icon(Icons.filter_alt_outlined),
+                    label: const Text('Filter'),
+                  ),
+                ],
               ),
+              _buildSelectedFilters(theme),
               const SizedBox(height: 10),
-              DailyFoodSection(
-                foods: featuredFoods,
-                repo: controller.repo,
-              ),
+              if (_isLoadingFeaturedFoods)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
+                DailyFoodSection(
+                  foods: featuredFoods,
+                  repo: controller.repo,
+                ),
               const SizedBox(height: 20),
               const Text(
                 'Common Allergens',
@@ -174,13 +345,18 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
               const SizedBox(height: 10),
-              AllergensSection(
-                allergens: allergens,
-              ),
-            ]
-
-            /// SEARCH RESULTS
-            else
+              if (_isLoadingAllergens)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
+                AllergensSection(
+                  allergens: allergens,
+                ),
+            ] else
               SearchResults(
                 foods: foods,
                 repo: controller.repo,

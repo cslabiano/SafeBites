@@ -15,12 +15,27 @@ class DailyFoodSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    if (foods.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text(
+          'No featured foods match the selected allergen filters.',
+        ),
+      );
+    }
+
+    return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: foods.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        var food = foods[index];
+        final food = foods[index];
 
         return FoodCard(
           onTap: () {
@@ -36,7 +51,7 @@ class DailyFoodSection extends StatelessWidget {
             );
           },
           title: food["name"],
-          ingredients: food["ingredients"] ?? "N/As",
+          ingredients: food["ingredients"] ?? "N/A",
         );
       },
     );
