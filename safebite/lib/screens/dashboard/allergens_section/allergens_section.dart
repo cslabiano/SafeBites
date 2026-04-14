@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../../../widgets/allergen_card.dart';
-import '../allergen_details.dart';
+import 'allergen_details.dart';
 
 class AllergensSection extends StatelessWidget {
   final List allergens;
 
-  const AllergensSection({super.key, required this.allergens});
+  const AllergensSection({
+    super.key,
+    required this.allergens,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,10 +17,9 @@ class AllergensSection extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: allergens.length,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: 12), // 👈 spacing
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        var allergen = allergens[index];
+        final allergen = allergens[index];
 
         return AllergenCard(
           onTap: () {
@@ -25,7 +28,7 @@ class AllergensSection extends StatelessWidget {
               MaterialPageRoute(
                 builder: (context) => AllergenDetailsPage(
                   title: allergen["name"],
-                  information: allergen["more_information"],
+                  information: allergen["more_information"] ?? '',
                   sourceLink: allergen["source_link"],
                 ),
               ),

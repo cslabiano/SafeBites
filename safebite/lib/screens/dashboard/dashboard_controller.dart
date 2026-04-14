@@ -20,9 +20,9 @@ class DashboardController {
 
     if (safeFoods.isEmpty) return [];
 
-    final today = DateTime.now();
+    final now = DateTime.now();
     final daySeed =
-        DateTime(today.year, today.month, today.day).millisecondsSinceEpoch;
+        DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
 
     final shuffledFoods = List<Map<String, dynamic>>.from(safeFoods)
       ..shuffle(Random(daySeed));
