@@ -100,6 +100,7 @@ class FeaturedSection extends StatelessWidget {
               final food = foods[index];
 
               return FoodCard(
+                index: index,
                 onTap: () {
                   Navigator.push(
                     context,
