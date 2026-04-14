@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../database/food_repository.dart';
+import '../../widgets/food_card.dart';
 import 'featured_foods/food_details.dart';
 
 class SearchResults extends StatelessWidget {
@@ -35,34 +36,21 @@ class SearchResults extends StatelessWidget {
       itemBuilder: (context, index) {
         final food = foods[index];
 
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            title: Text(
-              food['name'] ?? 'Unknown food',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(food['ingredients'] ?? 'No ingredients available'),
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FoodDetailsPage(
-                    title: food['name'],
-                    ingredients: food['ingredients'] ?? '',
-                    sourceLink: food['source_link']?.toString(),
-                  ),
+        return FoodCard(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FoodDetailsPage(
+                  title: food['name'],
+                  ingredients: food['ingredients'] ?? '',
+                  sourceLink: food['source_link']?.toString(),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
+          title: food['name'] ?? 'Unknown food',
+          ingredients: food['ingredients'] ?? 'No ingredients available',
         );
       },
     );
