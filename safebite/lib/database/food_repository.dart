@@ -1,27 +1,27 @@
 import 'package:sqflite/sqflite.dart';
 import 'database_helper.dart';
 import '../models/food.dart';
+import '../models/prediction_result.dart';
 
 class FoodRepository {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
 
-  /// GET ALL FOODS
   Future<List<Food>> getFoods() async {
     final db = await _databaseHelper.database;
-
     final result = await db.query("foods");
-
     return result.map((e) => Food.fromMap(e)).toList();
   }
 
-  /// GET FOOD BY NAME (for YOLO detection)
   Future<Map<String, dynamic>?> getFoodByName(String name) async {
     final db = await _databaseHelper.database;
 
+    final normalized = name.trim().toLowerCase();
+
     final result = await db.query(
       "foods",
-      where: "name = ?",
-      whereArgs: [name],
+      where: "LOWER(TRIM(name)) = ?",
+      whereArgs: [normalized],
+      limit: 1,
     );
 
     if (result.isNotEmpty) {
@@ -31,7 +31,6 @@ class FoodRepository {
     return null;
   }
 
-  /// GET INGREDIENTS OF FOOD (used for detailed views)
   Future<List<Map<String, dynamic>>> getIngredients(int foodId) async {
     final db = await _databaseHelper.database;
 
@@ -48,7 +47,6 @@ class FoodRepository {
     return result;
   }
 
-  /// GET ALLERGENS IN A FOOD
   Future<List<String>> getFoodAllergens(int foodId) async {
     final db = await _databaseHelper.database;
 
@@ -65,7 +63,6 @@ class FoodRepository {
     return result.map((e) => e["name"].toString()).toList();
   }
 
-  /// GET ALLERGEN INFO
   Future<Map<String, dynamic>?> getAllergenInfo(String allergen) async {
     final db = await _databaseHelper.database;
 
@@ -82,16 +79,11 @@ class FoodRepository {
     return null;
   }
 
-  /// GET ALL ALLERGENS (used for allergen selection UI)
   Future<List<Map<String, dynamic>>> getAllergens() async {
     final db = await _databaseHelper.database;
-
-    final result = await db.query("allergens");
-
-    return result;
+    return await db.query("allergens");
   }
 
-  /// SEARCH FOODS
   Future<List<Map<String, dynamic>>> searchFoods(String query) async {
     final db = await _databaseHelper.database;
 
@@ -121,12 +113,10 @@ class FoodRepository {
     return result;
   }
 
-  /// GET SAFE FOODS BASED ON USER ALLERGIES
   Future<List<Map<String, dynamic>>> getSafeFoods(
       List<String> allergies) async {
     final db = await _databaseHelper.database;
 
-    /// If user has no allergies → return all foods
     if (allergies.isEmpty) {
       return await db.rawQuery('''
         SELECT 
@@ -185,5 +175,38 @@ class FoodRepository {
     ''', allergies);
 
     return result;
+  }
+
+  Future<PredictionResult> enrichPrediction(PredictionResult prediction) async {
+    final food = await getFoodByName(prediction.label);
+
+    if (food == null) {
+      return prediction.copyWith(
+        foundInDatabase: false,
+        allergens: const [],
+        ingredients: const [],
+      );
+    }
+
+    final int foodId = food['id'] as int;
+    final allergens = await getFoodAllergens(foodId);
+    final ingredientsRaw = await getIngredients(foodId);
+
+    final ingredients = ingredientsRaw
+        .map((row) {
+          final name = (row['name'] ?? '').toString().trim();
+          final isOptional = row['is_optional'] == 1;
+          return isOptional ? '$name (optional)' : name;
+        })
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    return prediction.copyWith(
+      label: (food['name'] ?? prediction.label).toString(),
+      allergens: allergens,
+      ingredients: ingredients,
+      sourceLink: food['source_link']?.toString(),
+      foundInDatabase: true,
+    );
   }
 }

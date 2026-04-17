@@ -42,9 +42,9 @@ class FeaturedSection extends StatelessWidget {
                 ),
               ),
             ),
-            OutlinedButton.icon(
+            ElevatedButton.icon(
               onPressed: allergens.isEmpty ? null : onOpenFilter,
-              icon: const Icon(Icons.filter_alt_outlined),
+              icon: const Icon(Icons.filter_alt_outlined, size: 16),
               label: const Text('Filter'),
             ),
           ],
@@ -58,10 +58,10 @@ class FeaturedSection extends StatelessWidget {
               return Chip(
                 label: Text(allergen),
                 onDeleted: () => onRemoveAllergen(allergen),
-                backgroundColor: theme.colorScheme.secondaryContainer,
-                labelStyle: TextStyle(
-                  color: theme.colorScheme.onSecondaryContainer,
-                ),
+                deleteIconColor: const Color.fromRGBO(145, 31, 27, 1),
+                backgroundColor: const Color.fromRGBO(250, 227, 226, 1),
+                labelStyle:
+                    const TextStyle(color: Color.fromRGBO(145, 31, 27, 1)),
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),

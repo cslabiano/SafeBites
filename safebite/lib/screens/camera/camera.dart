@@ -6,6 +6,7 @@ import 'package:camera/camera.dart' as cam;
 
 import 'result_screen.dart';
 import '../../models/prediction_result.dart';
+import '../../services/food_detector_service.dart';
 
 class Camera extends StatefulWidget {
   final List<cam.CameraDescription> cameras;
@@ -25,8 +26,11 @@ class _CameraState extends State<Camera>
   Future<void>? _initializeControllerFuture;
 
   final ImagePicker _imagePicker = ImagePicker();
+  final FoodDetectorService _detector = FoodDetectorService();
 
   bool _isProcessing = false;
+  bool _isModelLoading = true;
+  String? _modelError;
 
   @override
   bool get wantKeepAlive => true;
@@ -34,13 +38,37 @@ class _CameraState extends State<Camera>
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
+    _initializeAll();
+  }
+
+  Future<void> _initializeAll() async {
+    await Future.wait([
+      _initializeCamera(),
+      _loadModel(),
+    ]);
+  }
+
+  Future<void> _loadModel() async {
+    try {
+      await _detector.loadModel();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _modelError = 'Failed to load model: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isModelLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _initializeCamera() async {
     if (widget.cameras.isEmpty) return;
 
-    // ✅ find back camera
     final backCamera = widget.cameras.firstWhere(
       (camera) => camera.lensDirection == cam.CameraLensDirection.back,
       orElse: () => widget.cameras.first,
@@ -61,49 +89,35 @@ class _CameraState extends State<Camera>
   }
 
   Future<void> _captureImage() async {
-    if (_controller == null || _isProcessing) return;
+    if (_controller == null || _isProcessing || _isModelLoading) return;
+    if (_modelError != null) {
+      _showError(_modelError!);
+      return;
+    }
 
     try {
-      setState(() {
-        _isProcessing = true;
-      });
+      setState(() => _isProcessing = true);
 
       await _initializeControllerFuture;
 
       final cam.XFile file = await _controller!.takePicture();
-      final imageFile = File(file.path);
-
-      final results = _mockPredictions();
-
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultScreen(
-            image: imageFile,
-            results: results,
-          ),
-        ),
-      );
+      await _runPrediction(File(file.path));
     } catch (e) {
-      _showError('Failed to capture image.');
+      _showError('Failed to capture image: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
   Future<void> _pickFromGallery() async {
-    if (_isProcessing) return;
+    if (_isProcessing || _isModelLoading) return;
+    if (_modelError != null) {
+      _showError(_modelError!);
+      return;
+    }
 
     try {
-      setState(() {
-        _isProcessing = true;
-      });
+      setState(() => _isProcessing = true);
 
       final XFile? file = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -111,49 +125,38 @@ class _CameraState extends State<Camera>
 
       if (file == null) return;
 
-      final imageFile = File(file.path);
-      final results = _mockPredictions();
-
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultScreen(
-            image: imageFile,
-            results: results,
-          ),
-        ),
-      );
+      await _runPrediction(File(file.path));
     } catch (e) {
-      _showError('Failed to pick image from gallery.');
+      _showError('Failed to pick image from gallery: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
-  List<PredictionResult> _mockPredictions() {
-    return [
-      PredictionResult(
-        label: 'Burger',
-        confidence: 0.92,
-        allergens: ['Gluten', 'Dairy'],
+  Future<void> _runPrediction(File imageFile) async {
+    List<PredictionResult> results;
+    try {
+      results = await _detector.predict(imageFile);
+    } catch (e) {
+      _showError('Prediction failed: $e');
+      return;
+    }
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ResultScreen(
+          image: imageFile,
+          results: results,
+        ),
       ),
-      PredictionResult(
-        label: 'Fries',
-        confidence: 0.88,
-        allergens: [],
-      ),
-    ];
+    );
   }
 
   void _showError(String message) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -162,6 +165,7 @@ class _CameraState extends State<Camera>
   @override
   void dispose() {
     _controller?.dispose();
+    _detector.close();
     super.dispose();
   }
 
@@ -171,9 +175,7 @@ class _CameraState extends State<Camera>
 
     if (widget.cameras.isEmpty) {
       return const Scaffold(
-        body: Center(
-          child: Text('No camera found on this device.'),
-        ),
+        body: Center(child: Text('No camera found on this device.')),
       );
     }
 
@@ -189,6 +191,7 @@ class _CameraState extends State<Camera>
               controller.value.isInitialized) {
             return Stack(
               children: [
+                // Camera preview
                 Positioned.fill(
                   child: ClipRect(
                     child: OverflowBox(
@@ -204,6 +207,8 @@ class _CameraState extends State<Camera>
                     ),
                   ),
                 ),
+
+                // Back button
                 Positioned(
                   top: MediaQuery.of(context).padding.top + 10,
                   left: 20,
@@ -213,16 +218,32 @@ class _CameraState extends State<Camera>
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                      ),
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                   ),
                 ),
+
+                // Model error banner
+                if (_modelError != null)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top + 60,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _modelError!,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+
+                // Bottom controls
                 Positioned(
                   left: 0,
                   right: 0,
@@ -230,16 +251,38 @@ class _CameraState extends State<Camera>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_isProcessing)
+                      if (_isModelLoading)
                         const Padding(
                           padding: EdgeInsets.only(bottom: 16),
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 8),
+                              Text(
+                                'Loading model...',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (_isProcessing)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 8),
+                              Text(
+                                'Analyzing...',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
                           ),
                         ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
+                          // Gallery button
                           GestureDetector(
                             onTap: _pickFromGallery,
                             child: Container(
@@ -255,6 +298,8 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
+
+                          // Shutter button
                           GestureDetector(
                             onTap: _captureImage,
                             child: Container(
@@ -275,6 +320,7 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
+
                           const SizedBox(width: 56),
                         ],
                       ),

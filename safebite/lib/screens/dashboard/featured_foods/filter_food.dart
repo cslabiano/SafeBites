@@ -63,14 +63,50 @@ class _FilterFoodSheetState extends State<FilterFoodSheet> {
                     final allergenName = allergen['name']?.toString() ?? '';
                     final isSelected = tempSelection.contains(allergenName);
 
-                    return CheckboxListTile(
-                      value: isSelected,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(allergenName),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      onChanged: (checked) {
-                        _toggleAllergen(allergenName, checked ?? false);
+                    return InkWell(
+                      onTap: () {
+                        _toggleAllergen(allergenName, !isSelected);
                       },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            // box
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color.fromRGBO(145, 31, 27, 1)
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Color.fromRGBO(145, 31, 27, 1),
+                                    )
+                                  : null,
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            // label
+                            Expanded(
+                              child: Text(
+                                allergenName,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   }).toList(),
                 ),

@@ -207,6 +207,9 @@ class _DashboardState extends State<Dashboard> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
         onPressed: () {
           Navigator.pushNamed(context, '/camera');
         },
