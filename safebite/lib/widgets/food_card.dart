@@ -4,8 +4,10 @@ class FoodCard extends StatelessWidget {
   final VoidCallback onTap;
   final String title;
   final String ingredients;
+  final IconData iconData;
   const FoodCard(
-      {required this.onTap,
+      {required this.iconData,
+      required this.onTap,
       required this.title,
       required this.ingredients,
       super.key});
@@ -15,39 +17,36 @@ class FoodCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
-      color: Colors
-          .transparent, // Ensures the Material background doesn't interfere
+      color: theme.colorScheme.surface,
+      elevation: 1,
+      borderRadius: BorderRadius.circular(12.0),
+      shadowColor: Colors.black.withOpacity(0.2),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.0),
         child: Ink(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: theme.colorScheme.secondary,
-              width: 1.5,
-            ),
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12.0),
           ),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start, // Align text to the left
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment
-                    .start, // No spaceBetween needed as there is no Edit button
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  Icon(iconData,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
                   Text(
                     title,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w500),
                   ),
-                  // Added an invisible expanded widget to push content left
-                  // and fill space, if necessary, but focusing on content alignment
-                ],
+                ]
               ),
-              const SizedBox(
-                  height: 4), // Small vertical space between title and subtitle
+              const SizedBox(height: 4),
               Row(
                 children: [
                   const Text(

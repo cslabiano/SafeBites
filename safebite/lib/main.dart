@@ -1,19 +1,8 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
-import 'package:safebite/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 
-// import providers
-import 'package:safebite/providers/auth_provider.dart';
-import 'package:safebite/providers/allergies_provider.dart';
-
 // import screens
-import 'screens/auth/sign_in.dart';
-import 'screens/auth/sign_up.dart';
-import 'navbar.dart';
 import 'screens/dashboard/dashboard.dart';
-import 'screens/profile/profile.dart';
 import 'screens/camera/camera.dart';
 
 late final List<CameraDescription> cameras;
@@ -21,21 +10,9 @@ late final List<CameraDescription> cameras;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
   cameras = await availableCameras();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => UserAuthProvider()),
-        ChangeNotifierProvider(create: (_) => AllergiesProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -49,9 +26,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Poppins',
         colorScheme: const ColorScheme.light(
-          background: Color.fromRGBO(240, 253, 250, 1),
+          // background: Color.fromRGBO(240, 253, 250, 1),
+          background: Color.fromRGBO(250, 250, 250, 1),
           onBackground: Color.fromRGBO(15, 23, 42, 1),
-          primary: Color.fromRGBO(13, 148, 136, 1),
+          primary: Color.fromRGBO(85, 180, 167, 1),
           onPrimary: Colors.white,
           secondary: Color.fromRGBO(213, 250, 241, 1),
           onSecondary: Color.fromRGBO(15, 23, 42, 1),
@@ -60,41 +38,8 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const AuthGate(),
-        '/signin': (context) => const SignIn(),
-        '/signup': (context) => const SignUp(),
-        '/navbar': (context) => Navbar(cameras: cameras),
-        '/dashboard': (context) => const Dashboard(),
-        '/profile': (context) => const Profile(),
+        '/': (context) => const Dashboard(),
         '/camera': (context) => Camera(cameras: cameras),
-      },
-    );
-  }
-}
-
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<UserAuthProvider>(context, listen: false);
-
-    return StreamBuilder(
-      stream: authProvider.userStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final user = snapshot.data;
-
-        if (user == null) {
-          return const SignIn();
-        }
-
-        return Navbar(cameras: cameras);
       },
     );
   }
