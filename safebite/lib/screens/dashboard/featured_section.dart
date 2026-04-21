@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../widgets/food_card.dart';
-import '../../../database/food_repository.dart';
+import '../../widgets/food_card.dart';
+import '../../database/food_repository.dart';
 import 'food_details.dart';
 
 class FeaturedSection extends StatelessWidget {
@@ -60,8 +60,9 @@ class FeaturedSection extends StatelessWidget {
                 onDeleted: () => onRemoveAllergen(allergen),
                 deleteIconColor: const Color.fromRGBO(145, 31, 27, 1),
                 backgroundColor: const Color.fromRGBO(250, 227, 226, 1),
-                labelStyle:
-                    const TextStyle(color: Color.fromRGBO(145, 31, 27, 1)),
+                labelStyle: const TextStyle(
+                  color: Color.fromRGBO(145, 31, 27, 1),
+                ),
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -105,16 +106,16 @@ class FeaturedSection extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => FoodDetailsPage(
-                        title: food["name"],
-                        ingredients: food["ingredients"] ?? "",
-                        sourceLink: food["source_link"]?.toString(),
+                        title: food['name'],
+                        ingredients: food['ingredients'] ?? '',
+                        sourceLink: food['source_link']?.toString(),
                       ),
                     ),
                   );
                 },
                 iconData: Icons.restaurant_outlined,
-                title: food["name"],
-                ingredients: food["ingredients"] ?? "N/A",
+                title: food['name'],
+                ingredients: food['ingredients'] ?? 'N/A',
               );
             },
           ),

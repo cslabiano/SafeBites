@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../database/food_repository.dart';
 import '../../widgets/food_card.dart';
-import 'featured_foods/food_details.dart';
+import 'food_details.dart';
 
 class SearchResults extends StatelessWidget {
   final List<Map<String, dynamic>> foods;

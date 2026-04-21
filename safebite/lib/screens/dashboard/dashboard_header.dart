@@ -14,8 +14,7 @@ class DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      toolbarHeight: 90, // 👈 IMPORTANT FIX
-
+      toolbarHeight: 90,
       title: Padding(
         padding: const EdgeInsets.only(top: 10),
         child: Column(
@@ -32,7 +31,7 @@ class DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
             const SizedBox(height: 2),
             const Text(
-              'Search foods and view allergen information',
+              'Search foods and discover safe picks',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w300,

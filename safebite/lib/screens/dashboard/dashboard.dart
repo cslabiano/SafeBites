@@ -4,9 +4,8 @@ import '../../widgets/searchbar.dart';
 import 'dashboard_controller.dart';
 import 'dashboard_header.dart';
 import 'search_results.dart';
-import 'featured_foods/featured_section.dart';
-import 'featured_foods/filter_food.dart';
-import 'allergens_section/allergens_section.dart';
+import 'featured_section.dart';
+import 'filter_food.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -27,7 +26,6 @@ class _DashboardState extends State<Dashboard> {
   List<String> selectedExcludedAllergens = [];
 
   bool _isLoadingFeaturedFoods = true;
-  bool _isLoadingAllergens = true;
 
   @override
   void initState() {
@@ -51,17 +49,12 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> loadAllergens() async {
-    setState(() {
-      _isLoadingAllergens = true;
-    });
-
     final result = await controller.loadAllergens();
 
     if (!mounted) return;
 
     setState(() {
       allergens = List<Map<String, dynamic>>.from(result);
-      _isLoadingAllergens = false;
     });
   }
 
@@ -150,12 +143,10 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: const DashboardHeader(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 75),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -166,7 +157,7 @@ class _DashboardState extends State<Dashboard> {
               hintText: 'Search food or ingredient',
             ),
             const SizedBox(height: 20),
-            if (_searchText.isEmpty) ...[
+            if (_searchText.isEmpty)
               FeaturedSection(
                 foods: featuredFoods,
                 repo: controller.repo,
@@ -175,45 +166,14 @@ class _DashboardState extends State<Dashboard> {
                 isLoading: _isLoadingFeaturedFoods,
                 onOpenFilter: _openFeaturedFoodFilter,
                 onRemoveAllergen: _removeExcludedAllergen,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Common Allergens',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              if (_isLoadingAllergens)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else
-                AllergensSection(
-                  allergens: allergens,
-                ),
-            ] else
+              )
+            else
               SearchResults(
                 foods: foods,
                 repo: controller.repo,
               ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-        onPressed: () {
-          Navigator.pushNamed(context, '/camera');
-        },
-        child: const Icon(Icons.camera_alt_rounded),
       ),
     );
   }

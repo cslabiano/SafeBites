@@ -72,7 +72,6 @@ class _FilterFoodSheetState extends State<FilterFoodSheet> {
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
                           children: [
-                            // box
                             Container(
                               width: 24,
                               height: 24,
@@ -94,10 +93,7 @@ class _FilterFoodSheetState extends State<FilterFoodSheet> {
                                     )
                                   : null,
                             ),
-
                             const SizedBox(width: 12),
-
-                            // label
                             Expanded(
                               child: Text(
                                 allergenName,
