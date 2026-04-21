@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/avoided_allergens_provider.dart';
 import '../../widgets/searchbar.dart';
 import 'dashboard_controller.dart';
 import 'dashboard_header.dart';
@@ -23,7 +25,6 @@ class _DashboardState extends State<Dashboard> {
   List<Map<String, dynamic>> allergens = [];
   List<Map<String, dynamic>> featuredFoods = [];
   List<Map<String, dynamic>> foods = [];
-  List<String> selectedExcludedAllergens = [];
 
   bool _isLoadingFeaturedFoods = true;
 
@@ -42,10 +43,8 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> _initializeDashboard() async {
-    await Future.wait([
-      loadAllergens(),
-      loadFeaturedFoods(),
-    ]);
+    await loadAllergens();
+    await loadFeaturedFoods();
   }
 
   Future<void> loadAllergens() async {
@@ -59,12 +58,14 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> loadFeaturedFoods() async {
+    final avoided = context.read<AvoidedAllergensProvider>().avoided;
+
     setState(() {
       _isLoadingFeaturedFoods = true;
     });
 
     final result = await controller.loadFeaturedFoods(
-      excludedAllergens: selectedExcludedAllergens,
+      excludedAllergens: avoided,
     );
 
     if (!mounted) return;
@@ -106,6 +107,8 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<void> _openFeaturedFoodFilter() async {
+    final provider = context.read<AvoidedAllergensProvider>();
+
     final result = await showModalBottomSheet<List<String>>(
       context: context,
       isScrollControlled: true,
@@ -113,26 +116,31 @@ class _DashboardState extends State<Dashboard> {
       builder: (context) {
         return FilterFoodSheet(
           allergens: allergens,
-          initiallySelected: selectedExcludedAllergens,
+          initiallySelected: provider.avoided,
         );
       },
     );
 
     if (result == null || !mounted) return;
 
-    setState(() {
-      selectedExcludedAllergens = result;
-    });
-
+    provider.setAvoided(result);
     await loadFeaturedFoods();
   }
 
   Future<void> _removeExcludedAllergen(String allergen) async {
-    setState(() {
-      selectedExcludedAllergens.remove(allergen);
-    });
-
+    context.read<AvoidedAllergensProvider>().remove(allergen);
     await loadFeaturedFoods();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    context.watch<AvoidedAllergensProvider>().avoided;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        loadFeaturedFoods();
+      }
+    });
   }
 
   @override
@@ -143,6 +151,8 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final avoided = context.watch<AvoidedAllergensProvider>().avoided;
+
     return Scaffold(
       appBar: const DashboardHeader(),
       body: SingleChildScrollView(
@@ -162,7 +172,7 @@ class _DashboardState extends State<Dashboard> {
                 foods: featuredFoods,
                 repo: controller.repo,
                 allergens: allergens,
-                selectedExcludedAllergens: selectedExcludedAllergens,
+                selectedExcludedAllergens: avoided,
                 isLoading: _isLoadingFeaturedFoods,
                 onOpenFilter: _openFeaturedFoodFilter,
                 onRemoveAllergen: _removeExcludedAllergen,

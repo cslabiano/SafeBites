@@ -208,22 +208,6 @@ class _CameraState extends State<Camera>
                   ),
                 ),
 
-                // Back button
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 10,
-                  left: 20,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    ),
-                  ),
-                ),
-
                 // Model error banner
                 if (_modelError != null)
                   Positioned(

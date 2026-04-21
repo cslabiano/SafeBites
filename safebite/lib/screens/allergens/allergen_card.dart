@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:safebite/screens/allergens/allergen_emoji.dart';
 
-import '../../providers/avoided_allergens_provider.dart';
+import '../../../providers/avoided_allergens_provider.dart';
+import 'allergen_emoji.dart';
 import '../dashboard/dashboard_controller.dart';
 import 'allergen_details.dart';
 
@@ -26,9 +26,7 @@ class _AllergensState extends State<Allergens> {
   }
 
   Future<void> _loadAllergens() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final result = await controller.loadAllergens();
 
@@ -46,6 +44,12 @@ class _AllergensState extends State<Allergens> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Allergens',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _loadAllergens,
         child: _isLoading
@@ -53,50 +57,20 @@ class _AllergensState extends State<Allergens> {
                 physics: AlwaysScrollableScrollPhysics(),
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 120),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
               )
             : ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                itemCount: allergens.length + 1,
+                itemCount: allergens.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.05,
-                        ),
-                        Text(
-                          'Allergens',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        Text(
-                          'Tap the toggle to add an allergen to your avoid list. Tap the card to learn more.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    );
-                  }
-
-                  final allergen = allergens[index - 1];
-                  final allergenName = allergen['name']?.toString() ?? '';
-                  final isAvoided = avoidedProvider.isAvoided(allergenName);
+                  final allergen = allergens[index];
+                  final name = allergen['name']?.toString() ?? '';
+                  final isAvoided = avoidedProvider.isAvoided(name);
 
                   return Material(
-                    color: theme.colorScheme.surface,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     elevation: 1.5,
                     shadowColor: Colors.black.withOpacity(0.08),
@@ -106,7 +80,7 @@ class _AllergensState extends State<Allergens> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => AllergenDetailsPage(
-                              title: allergenName,
+                              title: name,
                               information: allergen['more_information'] ?? '',
                               sourceLink: allergen['source_link'],
                             ),
@@ -132,24 +106,30 @@ class _AllergensState extends State<Allergens> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
-                                AllergenEmoji.get(allergenName),
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontFamilyFallback: [
-                                    'Segoe UI Emoji',
-                                    'Noto Color Emoji',
-                                  ],
+                              child: RichText(
+                                text: TextSpan(
+                                  text: AllergenEmoji.get(name),
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontFamily: null,
+                                    fontFamilyFallback: [
+                                      'Segoe UI Emoji',
+                                      'Noto Color Emoji',
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
+
                             const SizedBox(width: 12),
+
+                            // TEXT
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    allergenName,
+                                    name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -157,24 +137,28 @@ class _AllergensState extends State<Allergens> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+
                                   Text(
                                     allergen['short_description'] ?? '',
-                                    maxLines: 2,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: theme.colorScheme.onSurface
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
                                           .withOpacity(0.65),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
+
                             const SizedBox(width: 12),
+                            
                             OutlinedButton(
                               onPressed: () {
-                                avoidedProvider.toggle(allergenName);
+                                avoidedProvider.toggle(name);
                               },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
