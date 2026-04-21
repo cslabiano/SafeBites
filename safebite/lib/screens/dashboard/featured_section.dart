@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/food_card.dart';
 import '../../database/food_repository.dart';
+import '../allergens/allergen_emoji.dart';
 import 'food_details.dart';
 
 class FeaturedSection extends StatelessWidget {
@@ -12,6 +13,7 @@ class FeaturedSection extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onOpenFilter;
   final Future<void> Function(String allergen) onRemoveAllergen;
+  final Future<void> Function(String allergen) onToggleAllergen;
 
   const FeaturedSection({
     super.key,
@@ -22,6 +24,7 @@ class FeaturedSection extends StatelessWidget {
     required this.isLoading,
     required this.onOpenFilter,
     required this.onRemoveAllergen,
+    required this.onToggleAllergen,
   });
 
   @override
@@ -33,46 +36,110 @@ class FeaturedSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Icon(
+              Icons.gpp_maybe_outlined,
+              size: 18,
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
               child: Text(
-                'Featured Foods',
+                'AVOID THESE ALLERGENS',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: theme.colorScheme.onSurface.withOpacity(0.65),
                 ),
               ),
             ),
-            ElevatedButton.icon(
-              onPressed: allergens.isEmpty ? null : onOpenFilter,
-              icon: const Icon(Icons.filter_alt_outlined, size: 16),
-              label: const Text('Filter'),
+            Text(
+              '${selectedExcludedAllergens.length} active',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
             ),
           ],
         ),
-        if (selectedExcludedAllergens.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: selectedExcludedAllergens.map((allergen) {
-              return Chip(
-                label: Text(allergen),
-                onDeleted: () => onRemoveAllergen(allergen),
-                deleteIconColor: const Color.fromRGBO(145, 31, 27, 1),
-                backgroundColor: const Color.fromRGBO(250, 227, 226, 1),
-                labelStyle: const TextStyle(
-                  color: Color.fromRGBO(145, 31, 27, 1),
-                ),
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: allergens.map((allergen) {
+              final allergenName = allergen['name']?.toString() ?? '';
+              final isSelected =
+                  selectedExcludedAllergens.contains(allergenName);
+
+              return InkWell(
+                onTap: () => onToggleAllergen(allergenName),
+                borderRadius: BorderRadius.circular(999),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color.fromRGBO(220, 72, 56, 1)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color.fromRGBO(220, 72, 56, 1)
+                          : Colors.grey.shade300,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AllergenEmoji.get(allergenName),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontFamilyFallback: [
+                            'Segoe UI Emoji',
+                            'Noto Color Emoji',
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        allergenName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 10),
-        ] else
-          const SizedBox(height: 6),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Featured Foods',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
         if (isLoading)
           const Center(
             child: Padding(
@@ -85,8 +152,9 @@ class FeaturedSection extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
             ),
             child: const Text(
               'No featured foods match the selected allergen filters.',

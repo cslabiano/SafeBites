@@ -42,6 +42,18 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
+  Future<void> _toggleExcludedAllergen(String allergen) async {
+    final provider = context.read<AvoidedAllergensProvider>();
+
+    if (provider.isAvoided(allergen)) {
+      provider.remove(allergen);
+    } else {
+      provider.setAvoided([...provider.avoided, allergen]);
+    }
+
+    await loadFeaturedFoods();
+  }
+
   Future<void> _initializeDashboard() async {
     await loadAllergens();
     await loadFeaturedFoods();
@@ -207,6 +219,7 @@ class _DashboardState extends State<Dashboard> {
                       isLoading: _isLoadingFeaturedFoods,
                       onOpenFilter: _openFeaturedFoodFilter,
                       onRemoveAllergen: _removeExcludedAllergen,
+                      onToggleAllergen: _toggleExcludedAllergen,
                     )
                   else
                     SearchResults(
