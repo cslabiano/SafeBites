@@ -70,8 +70,9 @@ class FeaturedSection extends StatelessWidget {
               );
             }).toList(),
           ),
-        ],
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
+        ] else
+          const SizedBox(height: 6),
         if (isLoading)
           const Center(
             child: Padding(
@@ -95,6 +96,7 @@ class FeaturedSection extends StatelessWidget {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
             itemCount: foods.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {

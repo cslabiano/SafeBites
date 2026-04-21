@@ -154,36 +154,70 @@ class _DashboardState extends State<Dashboard> {
     final avoided = context.watch<AvoidedAllergensProvider>().avoided;
 
     return Scaffold(
-      appBar: const DashboardHeader(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SearchBarWidget(
-              controller: _searchController,
-              onChanged: _handleSearch,
-              onClear: _handleClear,
-              hintText: 'Search food or ingredient',
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.of(context).padding.top + 20,
+              16,
+              20,
             ),
-            const SizedBox(height: 20),
-            if (_searchText.isEmpty)
-              FeaturedSection(
-                foods: featuredFoods,
-                repo: controller.repo,
-                allergens: allergens,
-                selectedExcludedAllergens: avoided,
-                isLoading: _isLoadingFeaturedFoods,
-                onOpenFilter: _openFeaturedFoodFilter,
-                onRemoveAllergen: _removeExcludedAllergen,
-              )
-            else
-              SearchResults(
-                foods: foods,
-                repo: controller.repo,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color.fromRGBO(49, 145, 105, 1),
+                  Color.fromRGBO(87, 166, 132, 1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-          ],
-        ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DashboardHeader(),
+                const SizedBox(height: 16),
+                SearchBarWidget(
+                  controller: _searchController,
+                  onChanged: _handleSearch,
+                  onClear: _handleClear,
+                  hintText: 'Search food or ingredient',
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_searchText.isEmpty)
+                    FeaturedSection(
+                      foods: featuredFoods,
+                      repo: controller.repo,
+                      allergens: allergens,
+                      selectedExcludedAllergens: avoided,
+                      isLoading: _isLoadingFeaturedFoods,
+                      onOpenFilter: _openFeaturedFoodFilter,
+                      onRemoveAllergen: _removeExcludedAllergen,
+                    )
+                  else
+                    SearchResults(
+                      foods: foods,
+                      repo: controller.repo,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
