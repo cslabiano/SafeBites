@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
         colorScheme: const ColorScheme.light(
           background: Color.fromRGBO(249, 253, 252, 1),
           onBackground: Color.fromRGBO(15, 23, 42, 1),
-          primary: Color.fromRGBO(85, 180, 167, 1),
+          primary: Color.fromRGBO(49, 145, 105, 1),
           onPrimary: Colors.white,
           secondary: Color.fromRGBO(215, 243, 236, 1),
           onSecondary: Color.fromRGBO(15, 23, 42, 1),

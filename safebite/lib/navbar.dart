@@ -34,6 +34,7 @@ class _NavbarState extends State<Navbar> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
@@ -43,7 +44,7 @@ class _NavbarState extends State<Navbar> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF2E7D32),
+        selectedItemColor: theme.colorScheme.primary,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
