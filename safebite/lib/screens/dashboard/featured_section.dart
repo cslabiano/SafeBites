@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../widgets/food_card.dart';
 import '../../database/food_repository.dart';
+import '../../widgets/food_card.dart';
 import '../allergens/allergen_emoji.dart';
 import 'food_details.dart';
 
@@ -11,8 +11,6 @@ class FeaturedSection extends StatelessWidget {
   final List<Map<String, dynamic>> allergens;
   final List<String> selectedExcludedAllergens;
   final bool isLoading;
-  final VoidCallback onOpenFilter;
-  final Future<void> Function(String allergen) onRemoveAllergen;
   final Future<void> Function(String allergen) onToggleAllergen;
 
   const FeaturedSection({
@@ -22,10 +20,31 @@ class FeaturedSection extends StatelessWidget {
     required this.allergens,
     required this.selectedExcludedAllergens,
     required this.isLoading,
-    required this.onOpenFilter,
-    required this.onRemoveAllergen,
     required this.onToggleAllergen,
   });
+
+  List<String> _extractAllergens(Map<String, dynamic> food) {
+    final raw = food['allergens'];
+
+    if (raw == null) return [];
+
+    if (raw is List) {
+      return raw
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    if (raw is String) {
+      return raw
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +98,7 @@ class FeaturedSection extends StatelessWidget {
                 onTap: () => onToggleAllergen(allergenName),
                 borderRadius: BorderRadius.circular(999),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
@@ -94,13 +113,6 @@ class FeaturedSection extends StatelessWidget {
                           ? const Color.fromRGBO(220, 72, 56, 1)
                           : Colors.grey.shade300,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -115,7 +127,7 @@ class FeaturedSection extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Text(
                         allergenName,
                         style: TextStyle(
@@ -132,12 +144,22 @@ class FeaturedSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Featured Foods',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          children: [
+            Icon(
+              Icons.thumb_up_alt_outlined,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              "Today's Featured Foods",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         if (isLoading)
@@ -169,6 +191,10 @@ class FeaturedSection extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final food = foods[index];
+              final allergenLabels = _extractAllergens(food);
+              final triggeredAllergens = allergenLabels
+                  .where((a) => selectedExcludedAllergens.contains(a))
+                  .toList();
 
               return FoodCard(
                 onTap: () {
@@ -176,16 +202,18 @@ class FeaturedSection extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => FoodDetailsPage(
-                        title: food['name'],
+                        title: food['name'] ?? '',
                         ingredients: food['ingredients'] ?? '',
                         sourceLink: food['source_link']?.toString(),
                       ),
                     ),
                   );
                 },
-                iconData: Icons.restaurant_outlined,
-                title: food['name'],
+                title: food['name'] ?? '',
                 ingredients: food['ingredients'] ?? 'N/A',
+                hasAlert: triggeredAllergens.isNotEmpty,
+                allergenLabels: allergenLabels,
+                triggeredAllergens: triggeredAllergens,
               );
             },
           ),

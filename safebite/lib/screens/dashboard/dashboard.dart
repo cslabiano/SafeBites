@@ -217,8 +217,6 @@ class _DashboardState extends State<Dashboard> {
                       allergens: allergens,
                       selectedExcludedAllergens: avoided,
                       isLoading: _isLoadingFeaturedFoods,
-                      onOpenFilter: _openFeaturedFoodFilter,
-                      onRemoveAllergen: _removeExcludedAllergen,
                       onToggleAllergen: _toggleExcludedAllergen,
                     )
                   else
