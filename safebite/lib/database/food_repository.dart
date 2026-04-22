@@ -84,6 +84,46 @@ class FoodRepository {
     return await db.query("allergens");
   }
 
+  Future<List<Map<String, dynamic>>> getFoodsByAllergen(
+      String allergenName) async {
+    final db = await _databaseHelper.database;
+
+    final result = await db.rawQuery('''
+    SELECT 
+      foods.id,
+      foods.name,
+      foods.source_link,
+      GROUP_CONCAT(
+        DISTINCT CASE
+          WHEN ingredients.name IS NULL THEN NULL
+          WHEN food_ingredients.is_optional = 1
+            THEN ingredients.name || ' (optional)'
+          ELSE ingredients.name
+        END
+      ) AS ingredients,
+      GROUP_CONCAT(
+        DISTINCT allergens_all.name
+      ) AS allergens
+    FROM foods
+    JOIN food_ingredients
+      ON foods.id = food_ingredients.food_id
+    JOIN ingredient_allergens target_ia
+      ON food_ingredients.ingredient_id = target_ia.ingredient_id
+    JOIN allergens target_allergen
+      ON target_allergen.id = target_ia.allergen_id
+    LEFT JOIN ingredients
+      ON ingredients.id = food_ingredients.ingredient_id
+    LEFT JOIN ingredient_allergens ia_all
+      ON ingredients.id = ia_all.ingredient_id
+    LEFT JOIN allergens allergens_all
+      ON allergens_all.id = ia_all.allergen_id
+    WHERE target_allergen.name = ?
+    GROUP BY foods.id
+  ''', [allergenName]);
+
+    return result;
+  }
+
   Future<List<Map<String, dynamic>>> searchFoods(String query) async {
     final db = await _databaseHelper.database;
 
