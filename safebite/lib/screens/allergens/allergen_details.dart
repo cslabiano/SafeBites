@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -86,7 +87,10 @@ class _AllergenDetailsPageState extends State<AllergenDetailsPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Allergen info'),
+        title: const Text(
+          'Allergen info',
+          style: TextStyle(fontSize: 16),
+        ),
         titleSpacing: 0,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -172,42 +176,26 @@ class _AllergenDetailsPageState extends State<AllergenDetailsPage> {
               Text(
                 'ABOUT',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.6,
                   color: theme.colorScheme.onSurface.withOpacity(0.55),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 widget.information.isNotEmpty
                     ? widget.information
                     : 'No additional information available.',
               ),
 
-              // SOURCE
-              if (widget.sourceLink != null &&
-                  widget.sourceLink!.trim().isNotEmpty) ...[
-                const SizedBox(height: 20),
-                GestureDetector(
-                  onTap: () => _openLink(widget.sourceLink!),
-                  child: const Text(
-                    'View Source',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
 
               // DISHES SECTION
               Text(
                 'FILIPINO DISHES THAT CONTAIN IT',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.6,
                   color: theme.colorScheme.onSurface.withOpacity(0.55),
@@ -232,31 +220,53 @@ class _AllergenDetailsPageState extends State<AllergenDetailsPage> {
                       final allergenLabels = _extractAllergens(food);
                       final isLast = index == foods.length - 1;
 
-                      return Container(
-                        decoration: BoxDecoration(
-                          border: isLast
-                              ? null
-                              : Border(
-                                  bottom:
-                                      BorderSide(color: Colors.grey.shade200),
-                                ),
-                        ),
-                        child: ListTile(
-                          title: Text(food['name']),
-                          trailing: const Text('View →'),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => FoodDetailsPage(
-                                  title: food['name'],
-                                  ingredients: food['ingredients'] ?? '',
-                                  sourceLink: food['source_link']?.toString(),
-                                  allergenLabels: allergenLabels,
+                      return InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FoodDetailsPage(
+                                title: food['name'],
+                                ingredients: food['ingredients'] ?? '',
+                                sourceLink: food['source_link']?.toString(),
+                                allergenLabels: allergenLabels,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            border: isLast
+                                ? null
+                                : Border(
+                                    bottom:
+                                        BorderSide(color: Colors.grey.shade200),
+                                  ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  food['name'],
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    height: 1.15,
+                                  ),
                                 ),
                               ),
-                            );
-                          },
+                              const Text(
+                                'View →',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color.fromRGBO(82, 167, 107, 1),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }).toList(),
