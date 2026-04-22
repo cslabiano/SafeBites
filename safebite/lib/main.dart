@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:provider/provider.dart';
+import 'package:safebite/providers/avoided_allergens_provider.dart';
 
-// import screens
-import 'screens/dashboard/dashboard.dart';
-import 'screens/camera/camera.dart';
+import 'navbar.dart';
 
 late final List<CameraDescription> cameras;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   cameras = await availableCameras();
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AvoidedAllergensProvider(),
+      child: MyApp(cameras: cameras),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final List<CameraDescription> cameras;
+
+  const MyApp({
+    super.key,
+    required this.cameras,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,21 +35,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Poppins',
         colorScheme: const ColorScheme.light(
-          // background: Color.fromRGBO(240, 253, 250, 1),
-          background: Color.fromRGBO(250, 250, 250, 1),
+          background: Color.fromRGBO(249, 253, 252, 1),
           onBackground: Color.fromRGBO(15, 23, 42, 1),
-          primary: Color.fromRGBO(85, 180, 167, 1),
+          primary: Color.fromRGBO(49, 145, 105, 1),
           onPrimary: Colors.white,
-          secondary: Color.fromRGBO(213, 250, 241, 1),
+          secondary: Color.fromRGBO(215, 243, 236, 1),
           onSecondary: Color.fromRGBO(15, 23, 42, 1),
         ),
         useMaterial3: true,
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const Dashboard(),
-        '/camera': (context) => Camera(cameras: cameras),
-      },
+      home: Navbar(cameras: cameras),
     );
   }
 }

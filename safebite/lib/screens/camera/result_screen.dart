@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+
 import '../../models/prediction_result.dart';
+import '../allergens/allergen_emoji.dart';
 
 class ResultScreen extends StatelessWidget {
   final File image;
@@ -12,29 +14,37 @@ class ResultScreen extends StatelessWidget {
     required this.results,
   });
 
+  String _getFoodEmoji(List<String> allergenLabels) {
+    if (allergenLabels.isEmpty) return '🍜';
+    return AllergenEmoji.get(allergenLabels.first);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final allAllergens =
-        results.expand((result) => result.allergens).toSet().toList();
+    final allTriggered = results.expand((r) => r.allergens).toSet().toList();
+    final hasAlert = allTriggered.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Result"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          // Single pop — only dismisses the ResultScreen itself.
-          // The Camera screen remains in the stack so the user can scan again.
           onPressed: () => Navigator.pop(context),
         ),
+        title: const Text(
+          'Scan result',
+          style: TextStyle(fontSize: 16),
+        ),
+        titleSpacing: 0,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Captured / selected image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Image.file(
@@ -45,56 +55,85 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-
-            Text("Detected Foods", style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(
-              "${results.length} item${results.length == 1 ? '' : 's'} detected",
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 20),
-
-            // ── All allergens summary ──────────────────────────────────────
-            Text("Detected Allergens", style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            if (allAllergens.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary.withOpacity(0.35),
-                  borderRadius: BorderRadius.circular(12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: hasAlert
+                    ? const Color.fromRGBO(250, 227, 226, 1)
+                    : const Color.fromRGBO(230, 250, 238, 1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: hasAlert
+                      ? const Color.fromRGBO(240, 200, 198, 1)
+                      : const Color.fromRGBO(191, 232, 207, 1),
                 ),
-                child: const Text("No allergens detected."),
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: allAllergens.map((allergen) {
-                  return Chip(
-                    label: Text(allergen),
-                    backgroundColor: theme.colorScheme.secondary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    side: BorderSide.none,
-                  );
-                }).toList(),
               ),
-            const SizedBox(height: 20),
-
-            // ── Per-food cards ─────────────────────────────────────────────
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        hasAlert
+                            ? Icons.warning_amber_rounded
+                            : Icons.gpp_good_outlined,
+                        size: 20,
+                        color: hasAlert
+                            ? const Color.fromRGBO(220, 72, 56, 1)
+                            : const Color.fromRGBO(82, 167, 107, 1),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasAlert ? 'Allergen detected' : 'Looks safe for you',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: hasAlert
+                              ? const Color.fromRGBO(220, 72, 56, 1)
+                              : const Color.fromRGBO(82, 167, 107, 1),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    hasAlert
+                        ? 'Identified dish contains: ${allTriggered.join(", ")}.'
+                        : 'No conflicts with your selected allergens.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: hasAlert
+                          ? const Color.fromRGBO(213, 67, 57, 1)
+                          : const Color.fromRGBO(82, 167, 107, 1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'IDENTIFIED ${results.length > 1 ? "DISHES" : "DISH"}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: theme.colorScheme.onSurface.withOpacity(0.55),
+              ),
+            ),
+            const SizedBox(height: 12),
             if (results.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondary.withOpacity(0.2),
+                  color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: const Text(
-                  "No food was confidently detected in the image.",
+                  "We couldn't identify the dish. Try a clearer photo or better lighting.",
                 ),
               )
             else
@@ -107,88 +146,147 @@ class ResultScreen extends StatelessWidget {
                   final result = results[index];
 
                   return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withOpacity(0.25),
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          result.label,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%",
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          result.foundInDatabase
-                              ? "Found in local database"
-                              : "Detected by model only (not matched in local database)",
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Ingredients
-                        Text(
-                          "Ingredients",
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (result.ingredients.isEmpty)
-                          const Text("No ingredient data available.")
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: result.ingredients.map((ingredient) {
-                              return Chip(
-                                label: Text(ingredient),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.secondary,
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                                side: BorderSide.none,
-                              );
-                            }).toList(),
-                          ),
-                        const SizedBox(height: 12),
-
-                        // Allergens
-                        Text(
-                          "Allergens",
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (result.allergens.isEmpty)
-                          const Text("None")
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: result.allergens.map((a) {
-                              return Chip(
-                                label: Text(a),
-                                backgroundColor:
-                                    theme.colorScheme.secondaryContainer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  _getFoodEmoji(result.allergens),
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontFamilyFallback: [
+                                      'Segoe UI Emoji',
+                                      'Noto Color Emoji',
+                                    ],
+                                  ),
                                 ),
-                                side: BorderSide.none,
-                              );
-                            }).toList(),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      result.label,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "${(result.confidence * 100).toStringAsFixed(1)}% match",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                      ],
+                          if (result.ingredients.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            Text(
+                              "INGREDIENTS",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.55),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              result.ingredients.join(", "),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          Text(
+                            "ALLERGENS",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.55),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (result.allergens.isEmpty)
+                            const Text(
+                              "None",
+                              style: TextStyle(fontSize: 13),
+                            )
+                          else
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: result.allergens.map((a) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.secondary,
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        AllergenEmoji.get(a),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontFamilyFallback: [
+                                            'Segoe UI Emoji',
+                                            'Noto Color Emoji',
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        a,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 },

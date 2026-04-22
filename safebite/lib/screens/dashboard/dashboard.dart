@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/avoided_allergens_provider.dart';
 import '../../widgets/searchbar.dart';
 import 'dashboard_controller.dart';
 import 'dashboard_header.dart';
 import 'search_results.dart';
-import 'featured_foods/featured_section.dart';
-import 'featured_foods/filter_food.dart';
-import 'allergens_section/allergens_section.dart';
+import 'featured_section.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -24,10 +24,8 @@ class _DashboardState extends State<Dashboard> {
   List<Map<String, dynamic>> allergens = [];
   List<Map<String, dynamic>> featuredFoods = [];
   List<Map<String, dynamic>> foods = [];
-  List<String> selectedExcludedAllergens = [];
 
   bool _isLoadingFeaturedFoods = true;
-  bool _isLoadingAllergens = true;
 
   @override
   void initState() {
@@ -43,35 +41,42 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
+  Future<void> _toggleExcludedAllergen(String allergen) async {
+    final provider = context.read<AvoidedAllergensProvider>();
+
+    if (provider.isAvoided(allergen)) {
+      provider.remove(allergen);
+    } else {
+      provider.setAvoided([...provider.avoided, allergen]);
+    }
+
+    await loadFeaturedFoods();
+  }
+
   Future<void> _initializeDashboard() async {
-    await Future.wait([
-      loadAllergens(),
-      loadFeaturedFoods(),
-    ]);
+    await loadAllergens();
+    await loadFeaturedFoods();
   }
 
   Future<void> loadAllergens() async {
-    setState(() {
-      _isLoadingAllergens = true;
-    });
-
     final result = await controller.loadAllergens();
 
     if (!mounted) return;
 
     setState(() {
       allergens = List<Map<String, dynamic>>.from(result);
-      _isLoadingAllergens = false;
     });
   }
 
   Future<void> loadFeaturedFoods() async {
+    final avoided = context.read<AvoidedAllergensProvider>().avoided;
+
     setState(() {
       _isLoadingFeaturedFoods = true;
     });
 
     final result = await controller.loadFeaturedFoods(
-      excludedAllergens: selectedExcludedAllergens,
+      excludedAllergens: avoided,
     );
 
     if (!mounted) return;
@@ -112,34 +117,15 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
-  Future<void> _openFeaturedFoodFilter() async {
-    final result = await showModalBottomSheet<List<String>>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        return FilterFoodSheet(
-          allergens: allergens,
-          initiallySelected: selectedExcludedAllergens,
-        );
-      },
-    );
-
-    if (result == null || !mounted) return;
-
-    setState(() {
-      selectedExcludedAllergens = result;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    context.watch<AvoidedAllergensProvider>().avoided;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        loadFeaturedFoods();
+      }
     });
-
-    await loadFeaturedFoods();
-  }
-
-  Future<void> _removeExcludedAllergen(String allergen) async {
-    setState(() {
-      selectedExcludedAllergens.remove(allergen);
-    });
-
-    await loadFeaturedFoods();
   }
 
   @override
@@ -150,70 +136,72 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final avoided = context.watch<AvoidedAllergensProvider>().avoided;
 
     return Scaffold(
-      appBar: const DashboardHeader(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 75),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SearchBarWidget(
-              controller: _searchController,
-              onChanged: _handleSearch,
-              onClear: _handleClear,
-              hintText: 'Search food or ingredient',
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.of(context).padding.top + 20,
+              16,
+              20,
             ),
-            const SizedBox(height: 20),
-            if (_searchText.isEmpty) ...[
-              FeaturedSection(
-                foods: featuredFoods,
-                repo: controller.repo,
-                allergens: allergens,
-                selectedExcludedAllergens: selectedExcludedAllergens,
-                isLoading: _isLoadingFeaturedFoods,
-                onOpenFilter: _openFeaturedFoodFilter,
-                onRemoveAllergen: _removeExcludedAllergen,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color.fromRGBO(49, 145, 105, 1),
+                  Color.fromRGBO(87, 166, 132, 1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Common Allergens',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const DashboardHeader(),
+                const SizedBox(height: 16),
+                SearchBarWidget(
+                  controller: _searchController,
+                  onChanged: _handleSearch,
+                  onClear: _handleClear,
+                  hintText: 'Search for foods',
                 ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_searchText.isEmpty)
+                    FeaturedSection(
+                      foods: featuredFoods,
+                      repo: controller.repo,
+                      allergens: allergens,
+                      selectedExcludedAllergens: avoided,
+                      isLoading: _isLoadingFeaturedFoods,
+                      onToggleAllergen: _toggleExcludedAllergen,
+                    )
+                  else
+                    SearchResults(
+                      foods: foods,
+                      repo: controller.repo,
+                    ),
+                ],
               ),
-              const SizedBox(height: 10),
-              if (_isLoadingAllergens)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else
-                AllergensSection(
-                  allergens: allergens,
-                ),
-            ] else
-              SearchResults(
-                foods: foods,
-                repo: controller.repo,
-              ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-        onPressed: () {
-          Navigator.pushNamed(context, '/camera');
-        },
-        child: const Icon(Icons.camera_alt_rounded),
+            ),
+          ),
+        ],
       ),
     );
   }

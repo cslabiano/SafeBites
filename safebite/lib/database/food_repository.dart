@@ -84,31 +84,77 @@ class FoodRepository {
     return await db.query("allergens");
   }
 
+  Future<List<Map<String, dynamic>>> getFoodsByAllergen(
+      String allergenName) async {
+    final db = await _databaseHelper.database;
+
+    final result = await db.rawQuery('''
+    SELECT 
+      foods.id,
+      foods.name,
+      foods.source_link,
+      GROUP_CONCAT(
+        DISTINCT CASE
+          WHEN ingredients.name IS NULL THEN NULL
+          WHEN food_ingredients.is_optional = 1
+            THEN ingredients.name || ' (optional)'
+          ELSE ingredients.name
+        END
+      ) AS ingredients,
+      GROUP_CONCAT(
+        DISTINCT allergens_all.name
+      ) AS allergens
+    FROM foods
+    JOIN food_ingredients
+      ON foods.id = food_ingredients.food_id
+    JOIN ingredient_allergens target_ia
+      ON food_ingredients.ingredient_id = target_ia.ingredient_id
+    JOIN allergens target_allergen
+      ON target_allergen.id = target_ia.allergen_id
+    LEFT JOIN ingredients
+      ON ingredients.id = food_ingredients.ingredient_id
+    LEFT JOIN ingredient_allergens ia_all
+      ON ingredients.id = ia_all.ingredient_id
+    LEFT JOIN allergens allergens_all
+      ON allergens_all.id = ia_all.allergen_id
+    WHERE target_allergen.name = ?
+    GROUP BY foods.id
+  ''', [allergenName]);
+
+    return result;
+  }
+
   Future<List<Map<String, dynamic>>> searchFoods(String query) async {
     final db = await _databaseHelper.database;
 
     final result = await db.rawQuery('''
-      SELECT 
-        foods.id,
-        foods.name,
-        foods.source_link,
-        GROUP_CONCAT(
-          CASE
-            WHEN ingredients.name IS NULL THEN NULL
-            WHEN food_ingredients.is_optional = 1
-              THEN ingredients.name || ' (optional)'
-            ELSE ingredients.name
-          END,
-          ', '
-        ) AS ingredients
-      FROM foods
-      LEFT JOIN food_ingredients
-        ON foods.id = food_ingredients.food_id
-      LEFT JOIN ingredients
-        ON ingredients.id = food_ingredients.ingredient_id
-      WHERE foods.name LIKE ?
-      GROUP BY foods.id
-    ''', ['%$query%']);
+    SELECT 
+      foods.id,
+      foods.name,
+      foods.source_link,
+      GROUP_CONCAT(
+        DISTINCT CASE
+          WHEN ingredients.name IS NULL THEN NULL
+          WHEN food_ingredients.is_optional = 1
+            THEN ingredients.name || ' (optional)'
+          ELSE ingredients.name
+        END
+      ) AS ingredients,
+      GROUP_CONCAT(
+        DISTINCT allergens.name
+      ) AS allergens
+    FROM foods
+    LEFT JOIN food_ingredients
+      ON foods.id = food_ingredients.food_id
+    LEFT JOIN ingredients
+      ON ingredients.id = food_ingredients.ingredient_id
+    LEFT JOIN ingredient_allergens
+      ON ingredients.id = ingredient_allergens.ingredient_id
+    LEFT JOIN allergens
+      ON allergens.id = ingredient_allergens.allergen_id
+    WHERE foods.name LIKE ?
+    GROUP BY foods.id
+  ''', ['%$query%']);
 
     return result;
   }
@@ -119,60 +165,72 @@ class FoodRepository {
 
     if (allergies.isEmpty) {
       return await db.rawQuery('''
-        SELECT 
-          foods.id,
-          foods.name,
-          foods.source_link,
-          GROUP_CONCAT(
-            CASE
-              WHEN ingredients.name IS NULL THEN NULL
-              WHEN food_ingredients.is_optional = 1
-                THEN ingredients.name || ' (optional)'
-              ELSE ingredients.name
-            END,
-            ', '
-          ) AS ingredients
-        FROM foods
-        LEFT JOIN food_ingredients
-          ON foods.id = food_ingredients.food_id
-        LEFT JOIN ingredients
-          ON ingredients.id = food_ingredients.ingredient_id
-        GROUP BY foods.id
-      ''');
-    }
-
-    final placeholders = List.filled(allergies.length, '?').join(',');
-
-    final result = await db.rawQuery('''
       SELECT 
         foods.id,
         foods.name,
         foods.source_link,
         GROUP_CONCAT(
-          CASE
+          DISTINCT CASE
             WHEN ingredients.name IS NULL THEN NULL
             WHEN food_ingredients.is_optional = 1
               THEN ingredients.name || ' (optional)'
             ELSE ingredients.name
-          END,
-          ', '
-        ) AS ingredients
+          END
+        ) AS ingredients,
+        GROUP_CONCAT(
+          DISTINCT allergens.name
+        ) AS allergens
       FROM foods
       LEFT JOIN food_ingredients
         ON foods.id = food_ingredients.food_id
       LEFT JOIN ingredients
         ON ingredients.id = food_ingredients.ingredient_id
-      WHERE foods.id NOT IN (
-        SELECT food_ingredients.food_id
-        FROM food_ingredients
-        JOIN ingredient_allergens
-          ON food_ingredients.ingredient_id = ingredient_allergens.ingredient_id
-        JOIN allergens
-          ON allergens.id = ingredient_allergens.allergen_id
-        WHERE allergens.name IN ($placeholders)
-      )
+      LEFT JOIN ingredient_allergens
+        ON ingredients.id = ingredient_allergens.ingredient_id
+      LEFT JOIN allergens
+        ON allergens.id = ingredient_allergens.allergen_id
       GROUP BY foods.id
-    ''', allergies);
+    ''');
+    }
+
+    final placeholders = List.filled(allergies.length, '?').join(',');
+
+    final result = await db.rawQuery('''
+    SELECT 
+      foods.id,
+      foods.name,
+      foods.source_link,
+      GROUP_CONCAT(
+        DISTINCT CASE
+          WHEN ingredients.name IS NULL THEN NULL
+          WHEN food_ingredients.is_optional = 1
+            THEN ingredients.name || ' (optional)'
+          ELSE ingredients.name
+        END
+      ) AS ingredients,
+      GROUP_CONCAT(
+        DISTINCT allergens.name
+      ) AS allergens
+    FROM foods
+    LEFT JOIN food_ingredients
+      ON foods.id = food_ingredients.food_id
+    LEFT JOIN ingredients
+      ON ingredients.id = food_ingredients.ingredient_id
+    LEFT JOIN ingredient_allergens
+      ON ingredients.id = ingredient_allergens.ingredient_id
+    LEFT JOIN allergens
+      ON allergens.id = ingredient_allergens.allergen_id
+    WHERE foods.id NOT IN (
+      SELECT food_ingredients.food_id
+      FROM food_ingredients
+      JOIN ingredient_allergens
+        ON food_ingredients.ingredient_id = ingredient_allergens.ingredient_id
+      JOIN allergens
+        ON allergens.id = ingredient_allergens.allergen_id
+      WHERE allergens.name IN ($placeholders)
+    )
+    GROUP BY foods.id
+  ''', allergies);
 
     return result;
   }
