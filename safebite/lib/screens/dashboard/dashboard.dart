@@ -7,7 +7,6 @@ import 'dashboard_controller.dart';
 import 'dashboard_header.dart';
 import 'search_results.dart';
 import 'featured_section.dart';
-import 'filter_food.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -118,32 +117,6 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
-  Future<void> _openFeaturedFoodFilter() async {
-    final provider = context.read<AvoidedAllergensProvider>();
-
-    final result = await showModalBottomSheet<List<String>>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        return FilterFoodSheet(
-          allergens: allergens,
-          initiallySelected: provider.avoided,
-        );
-      },
-    );
-
-    if (result == null || !mounted) return;
-
-    provider.setAvoided(result);
-    await loadFeaturedFoods();
-  }
-
-  Future<void> _removeExcludedAllergen(String allergen) async {
-    context.read<AvoidedAllergensProvider>().remove(allergen);
-    await loadFeaturedFoods();
-  }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -199,7 +172,7 @@ class _DashboardState extends State<Dashboard> {
                   controller: _searchController,
                   onChanged: _handleSearch,
                   onClear: _handleClear,
-                  hintText: 'Search food or ingredient',
+                  hintText: 'Search for foods',
                 ),
               ],
             ),

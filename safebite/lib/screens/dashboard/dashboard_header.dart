@@ -12,14 +12,14 @@ class DashboardHeader extends StatelessWidget {
           'SafeBite',
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 32,
+            fontSize: 28,
             color: Colors.white,
           ),
         ),
         Text(
           'Eat safer. Search foods and discover safe picks.',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             color: Colors.white70,
           ),
         ),

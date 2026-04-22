@@ -23,6 +23,19 @@ class FeaturedSection extends StatelessWidget {
     required this.onToggleAllergen,
   });
 
+  // ✅ Aesthetic order
+  static const List<String> _allergenOrder = [
+    'Milk',
+    'Egg',
+    'Tree Nut',
+    'Soy',
+    'Fish',
+    'Sesame',
+    'Peanut',
+    'Wheat',
+    'Shellfish',
+  ];
+
   List<String> _extractAllergens(Map<String, dynamic> food) {
     final raw = food['allergens'];
 
@@ -50,6 +63,22 @@ class FeaturedSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // ✅ Sort allergens for display
+    final sortedAllergens = List<Map<String, dynamic>>.from(allergens)
+      ..sort((a, b) {
+        final aName = a['name']?.toString() ?? '';
+        final bName = b['name']?.toString() ?? '';
+
+        final aIndex = _allergenOrder.indexOf(aName);
+        final bIndex = _allergenOrder.indexOf(bName);
+
+        if (aIndex == -1 && bIndex == -1) return 0;
+        if (aIndex == -1) return 1;
+        if (bIndex == -1) return -1;
+
+        return aIndex.compareTo(bIndex);
+      });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -57,15 +86,15 @@ class FeaturedSection extends StatelessWidget {
           children: [
             Icon(
               Icons.gpp_maybe_outlined,
-              size: 18,
+              size: 16,
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Expanded(
               child: Text(
                 'AVOID THESE ALLERGENS',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.4,
                   color: theme.colorScheme.onSurface.withOpacity(0.65),
@@ -89,7 +118,7 @@ class FeaturedSection extends StatelessWidget {
             alignment: WrapAlignment.center,
             spacing: 6,
             runSpacing: 6,
-            children: allergens.map((allergen) {
+            children: sortedAllergens.map((allergen) {
               final allergenName = allergen['name']?.toString() ?? '';
               final isSelected =
                   selectedExcludedAllergens.contains(allergenName);
@@ -100,7 +129,7 @@ class FeaturedSection extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 6,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
@@ -120,7 +149,7 @@ class FeaturedSection extends StatelessWidget {
                       Text(
                         AllergenEmoji.get(allergenName),
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 9,
                           fontFamilyFallback: [
                             'Segoe UI Emoji',
                             'Noto Color Emoji',
@@ -155,7 +184,7 @@ class FeaturedSection extends StatelessWidget {
             const Text(
               "Today's Featured Foods",
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
