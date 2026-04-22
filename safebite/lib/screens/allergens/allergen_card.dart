@@ -72,7 +72,6 @@ class AllergenCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    // const SizedBox(height: 2),
                     Text(
                       subtitle,
                       maxLines: 2,
