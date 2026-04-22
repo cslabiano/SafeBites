@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/allergens/allergen_emoji.dart';
 
 class FoodCard extends StatelessWidget {
   final VoidCallback onTap;
@@ -17,6 +18,11 @@ class FoodCard extends StatelessWidget {
     this.allergenLabels = const [],
     this.triggeredAllergens = const [],
   });
+
+  String _getFoodEmoji() {
+    if (allergenLabels.isEmpty) return '🍜';
+    return AllergenEmoji.get(allergenLabels.first);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,23 +49,24 @@ class FoodCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary,
-                    borderRadius: BorderRadius.circular(14),
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _getFoodEmoji(),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontFamilyFallback: [
+                      'Segoe UI Emoji',
+                      'Noto Color Emoji',
+                    ],
                   ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    "🍜",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontFamilyFallback: [
-                        'Segoe UI Emoji',
-                        'Noto Color Emoji',
-                      ],
-                    ),
-                  )),
+                ),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -98,7 +105,7 @@ class FoodCard extends StatelessWidget {
                               Icon(
                                 hasAlert
                                     ? Icons.warning_amber_rounded
-                                    : Icons.shield_outlined,
+                                    : Icons.gpp_good_outlined,
                                 size: 12,
                                 color: hasAlert
                                     ? const Color.fromRGBO(145, 31, 27, 1)
