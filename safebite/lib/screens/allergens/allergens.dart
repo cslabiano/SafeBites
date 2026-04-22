@@ -82,7 +82,7 @@ class _AllergensState extends State<Allergens> {
                         Text(
                           'Tap the toggle to add an allergen to your avoid list. Tap the card to learn more.',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ),
