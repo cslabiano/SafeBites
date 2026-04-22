@@ -103,7 +103,7 @@ class FeaturedSection extends StatelessWidget {
             Text(
               '${selectedExcludedAllergens.length} active',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.primary,
               ),
@@ -171,7 +171,7 @@ class FeaturedSection extends StatelessWidget {
             }).toList(),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
         Row(
           children: [
             Icon(

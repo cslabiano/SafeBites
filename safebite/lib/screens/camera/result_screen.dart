@@ -21,13 +21,17 @@ class ResultScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Result"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          // Single pop — only dismisses the ResultScreen itself.
-          // The Camera screen remains in the stack so the user can scan again.
           onPressed: () => Navigator.pop(context),
         ),
+        title: const Text(
+          'Result',
+          style: TextStyle(fontSize: 16),
+        ),
+        titleSpacing: 0,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

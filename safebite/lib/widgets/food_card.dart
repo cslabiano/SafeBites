@@ -73,7 +73,7 @@ class FoodCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Expanded(
                           child: Text(
@@ -81,9 +81,8 @@ class FoodCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              height: 1.2,
                             ),
                           ),
                         ),
@@ -106,7 +105,7 @@ class FoodCard extends StatelessWidget {
                                 hasAlert
                                     ? Icons.warning_amber_rounded
                                     : Icons.gpp_good_outlined,
-                                size: 12,
+                                size: 10,
                                 color: hasAlert
                                     ? const Color.fromRGBO(145, 31, 27, 1)
                                     : const Color.fromRGBO(46, 125, 50, 1),
@@ -115,7 +114,7 @@ class FoodCard extends StatelessWidget {
                               Text(
                                 hasAlert ? 'ALERT' : 'SAFE',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 8,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.4,
                                   color: hasAlert
@@ -134,8 +133,7 @@ class FoodCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
+                        fontSize: 12,
                         color: theme.colorScheme.onSurface.withOpacity(0.65),
                       ),
                     ),
