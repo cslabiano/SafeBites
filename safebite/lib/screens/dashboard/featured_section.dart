@@ -23,7 +23,6 @@ class FeaturedSection extends StatelessWidget {
     required this.onToggleAllergen,
   });
 
-  // ✅ Aesthetic order
   static const List<String> _allergenOrder = [
     'Milk',
     'Egg',
@@ -234,6 +233,7 @@ class FeaturedSection extends StatelessWidget {
                         title: food['name'] ?? '',
                         ingredients: food['ingredients'] ?? '',
                         sourceLink: food['source_link']?.toString(),
+                        allergenLabels: allergenLabels,
                       ),
                     ),
                   );

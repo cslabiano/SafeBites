@@ -78,6 +78,7 @@ class SearchResults extends StatelessWidget {
                   title: food['name'] ?? '',
                   ingredients: food['ingredients'] ?? '',
                   sourceLink: food['source_link']?.toString(),
+                  allergenLabels: allergenLabels,
                 ),
               ),
             );
