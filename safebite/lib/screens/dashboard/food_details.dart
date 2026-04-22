@@ -234,10 +234,14 @@ class FoodDetailsPage extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
+                        color: isAvoided
+                            ? const Color.fromRGBO(250, 227, 226, 1)
+                            : theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color:  Colors.grey.shade300,
+                          color: isAvoided
+                              ? const Color.fromRGBO(240, 200, 198, 1)
+                              : Colors.grey.shade300,
                         ),
                       ),
                       child: Row(
@@ -259,7 +263,9 @@ class FoodDetailsPage extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color:  theme.colorScheme.onSurface,
+                              color: isAvoided
+                                  ? const Color.fromRGBO(145, 31, 27, 1)
+                                  : theme.colorScheme.onSurface,
                             ),
                           ),
                         ],
