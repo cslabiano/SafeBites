@@ -35,8 +35,7 @@ class FoodDetectorService {
 
   Future<void> loadModel() async {
     // Load label list so we can map classIndex → food name.
-    final labelData =
-        await rootBundle.loadString('assets/models/labels.txt');
+    final labelData = await rootBundle.loadString('assets/models/labels.txt');
     _labels = labelData
         .split('\n')
         .map((l) => l.trim())
@@ -46,7 +45,7 @@ class FoodDetectorService {
     // ultralytics_yolo v0.2.x: single YOLO class, one import.
     // modelPath is the full asset path as declared in pubspec.yaml.
     _yolo = YOLO(
-      modelPath: 'assets/models/best_float32.tflite',
+      modelPath: 'best_float32.tflite',
       task: YOLOTask.segment,
     );
 
@@ -54,8 +53,8 @@ class FoodDetectorService {
   }
 
   // ── Inference ─────────────────────────────────────────────────────────────
-
   Future<FoodDetectionOutput> predict(File imageFile) async {
+    print(_labels.length);
     if (_yolo == null) throw Exception('Model not loaded');
 
     final Uint8List imageBytes = await imageFile.readAsBytes();
@@ -70,12 +69,10 @@ class FoodDetectorService {
     );
 
     // ── Annotated image ───────────────────────────────────────────────────
-    final Uint8List? annotatedBytes =
-        raw['annotatedImage'] as Uint8List?;
+    final Uint8List? annotatedBytes = raw['annotatedImage'] as Uint8List?;
 
     // ── Parse detection boxes ─────────────────────────────────────────────
-    final List<dynamic> rawBoxes =
-        (raw['boxes'] as List<dynamic>?) ?? [];
+    final List<dynamic> rawBoxes = (raw['boxes'] as List<dynamic>?) ?? [];
 
     final sorted = rawBoxes
         .cast<Map<String, dynamic>>()
@@ -92,14 +89,33 @@ class FoodDetectorService {
     for (int i = 0; i < top.length; i++) {
       final box = top[i];
 
-      // ── Class label ──────────────────────────────────────────────────
-      final classIdx = (box['classIndex'] as num?)?.toInt() ?? 0;
-      final String label = (classIdx >= 0 && classIdx < _labels.length)
-          ? _labels[classIdx]
-          : (box['className'] as String? ?? 'Unknown');
+      // 🔍 DEBUG START
+      print('RAW BOX: $box');
+      print('CLASS VALUE: ${box['class']}');
+      print('CLASS TYPE: ${box['class'].runtimeType}');
+      // 🔍 DEBUG END
 
-      final double confidence =
-          (box['confidence'] as num?)?.toDouble() ?? 0;
+      // ── Class label ──────────────────────────────────────────────────
+      final rawClass = box['class'];
+
+      String label;
+
+      if (rawClass is int) {
+        label = (rawClass >= 0 && rawClass < _labels.length)
+            ? _labels[rawClass]
+            : 'Unknown';
+      } else if (rawClass is double) {
+        final idx = rawClass.toInt();
+        label = (idx >= 0 && idx < _labels.length) ? _labels[idx] : 'Unknown';
+      } else if (rawClass is String) {
+        label = rawClass;
+      } else {
+        label = 'Unknown';
+      }
+
+      print('FINAL LABEL: $label');
+
+      final double confidence = (box['confidence'] as num?)?.toDouble() ?? 0;
 
       // ── Bounding box (normalised 0–1) ────────────────────────────────
       // The plugin may use 'x1/y1/x2/y2' or 'left/top/right/bottom'.
