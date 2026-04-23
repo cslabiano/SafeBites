@@ -5,6 +5,7 @@ class PredictionResult {
   final List<String> ingredients;
   final String? sourceLink;
   final bool foundInDatabase;
+  final BoundingBox? boundingBox;
 
   PredictionResult({
     required this.label,
@@ -13,6 +14,7 @@ class PredictionResult {
     this.ingredients = const [],
     this.sourceLink,
     this.foundInDatabase = false,
+    this.boundingBox,
   });
 
   PredictionResult copyWith({
@@ -22,6 +24,7 @@ class PredictionResult {
     List<String>? ingredients,
     String? sourceLink,
     bool? foundInDatabase,
+    BoundingBox? boundingBox,
   }) {
     return PredictionResult(
       label: label ?? this.label,
@@ -30,6 +33,18 @@ class PredictionResult {
       ingredients: ingredients ?? this.ingredients,
       sourceLink: sourceLink ?? this.sourceLink,
       foundInDatabase: foundInDatabase ?? this.foundInDatabase,
+      boundingBox: boundingBox ?? this.boundingBox,
     );
   }
+}
+
+class BoundingBox {
+  final double x1, y1, x2, y2;
+
+  BoundingBox({
+    required this.x1,
+    required this.y1,
+    required this.x2,
+    required this.y2,
+  });
 }

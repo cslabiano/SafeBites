@@ -1,8 +1,25 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../models/prediction_result.dart';
 import '../allergens/allergen_emoji.dart';
+
+Color getDetectionColor(int index) {
+  const palette = [
+    Color(0xFF4E9AF1),
+    Color(0xFF9D5CE0),
+    Color(0xFFE0B05C),
+    Color(0xFF5C7CE0),
+    Color(0xFFE05CB8),
+    Color(0xFF5CC2E0),
+    Color(0xFFC0A05C),
+  ];
+
+  return palette[index % palette.length];
+}
 
 class ResultScreen extends StatelessWidget {
   final File image;
@@ -17,6 +34,13 @@ class ResultScreen extends StatelessWidget {
   String _getFoodEmoji(List<String> allergenLabels) {
     if (allergenLabels.isEmpty) return '🍜';
     return AllergenEmoji.get(allergenLabels.first);
+  }
+
+  Future<ui.Image> _loadUiImage(File file) async {
+    final Uint8List bytes = await file.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    return frame.image;
   }
 
   @override
@@ -48,11 +72,48 @@ class ResultScreen extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                image,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: 520,
+                  minHeight: 220,
+                ),
+                child: FutureBuilder<ui.Image>(
+                  future: _loadUiImage(image),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Container(
+                        width: double.infinity,
+                        height: 220,
+                        color: Colors.black12,
+                      );
+                    }
+
+                    final imageWidth = snapshot.data!.width.toDouble();
+                    final imageHeight = snapshot.data!.height.toDouble();
+                    final aspectRatio = imageWidth / imageHeight;
+
+                    return AspectRatio(
+                      aspectRatio: aspectRatio,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(
+                            image,
+                            fit: BoxFit.contain,
+                          ),
+                          CustomPaint(
+                            painter: _DetectionPainter(
+                              results: results,
+                              imageWidth: imageWidth,
+                              imageHeight: imageHeight,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -146,12 +207,15 @@ class ResultScreen extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final result = results[index];
+                  final color = getDetectionColor(index);
 
                   return Container(
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(
+                        color: color.withOpacity(0.4), // colored border
+                        width: 1.2,
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
@@ -297,5 +361,126 @@ class ResultScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _DetectionPainter extends CustomPainter {
+  final List<PredictionResult> results;
+  final double imageWidth;
+  final double imageHeight;
+  final BoxFit fit;
+
+  _DetectionPainter({
+    required this.results,
+    required this.imageWidth,
+    required this.imageHeight,
+    required this.fit,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final List<Color> palette = [
+      const Color(0xFF4E9AF1),
+      const Color(0xFF9D5CE0),
+      const Color(0xFFE0B05C),
+      const Color(0xFF5C7CE0),
+      const Color(0xFFE05CB8),
+      const Color(0xFF5CC2E0),
+      const Color(0xFFC0A05C),
+    ];
+
+    final fitted = applyBoxFit(
+      fit,
+      Size(imageWidth, imageHeight),
+      size,
+    );
+
+    final src = Alignment.center.inscribe(
+      fitted.source,
+      Offset.zero & Size(imageWidth, imageHeight),
+    );
+
+    final dst = Alignment.center.inscribe(
+      fitted.destination,
+      Offset.zero & size,
+    );
+
+    final scaleX = dst.width / src.width;
+    final scaleY = dst.height / src.height;
+
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+
+    for (int i = 0; i < results.length; i++) {
+      final result = results[i];
+      final box = result.boundingBox;
+      if (box == null) continue;
+
+      final color = palette[i % palette.length];
+
+      final boxPaint = Paint()
+        ..color = color
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke;
+
+      final fillPaint = Paint()
+        ..color = color.withOpacity(0.12)
+        ..style = PaintingStyle.fill;
+
+      final labelBgPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill;
+
+      final left = dst.left + ((box.x1 * imageWidth) - src.left) * scaleX;
+      final top = dst.top + ((box.y1 * imageHeight) - src.top) * scaleY;
+      final right = dst.left + ((box.x2 * imageWidth) - src.left) * scaleX;
+      final bottom = dst.top + ((box.y2 * imageHeight) - src.top) * scaleY;
+
+      final rect = Rect.fromLTRB(left, top, right, bottom);
+
+      // canvas.drawRect(rect, fillPaint);
+      canvas.drawRect(rect, boxPaint);
+
+      final labelText =
+          '${result.label} ${(result.confidence * 100).toStringAsFixed(1)}%';
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: labelText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: size.width * 0.8);
+
+      const padding = 6.0;
+      final labelHeight = textPainter.height + 6;
+
+      double labelTop = top - labelHeight;
+      if (labelTop < 0) labelTop = top;
+
+      final labelRect = Rect.fromLTWH(
+        left,
+        labelTop,
+        textPainter.width + padding * 2,
+        labelHeight,
+      );
+
+      canvas.drawRect(labelRect, labelBgPaint);
+      textPainter.paint(canvas, Offset(left + padding, labelTop + 3));
+    }
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _DetectionPainter oldDelegate) {
+    return oldDelegate.results != results ||
+        oldDelegate.imageWidth != imageWidth ||
+        oldDelegate.imageHeight != imageHeight ||
+        oldDelegate.fit != fit;
   }
 }
