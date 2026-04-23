@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:camera/camera.dart' as cam;
 
 import 'result_screen.dart';
-import '../../models/prediction_result.dart';
 import '../../services/food_detector_service.dart';
 
 class Camera extends StatefulWidget {
@@ -97,9 +96,7 @@ class _CameraState extends State<Camera>
 
     try {
       setState(() => _isProcessing = true);
-
       await _initializeControllerFuture;
-
       final cam.XFile file = await _controller!.takePicture();
       await _runPrediction(File(file.path));
     } catch (e) {
@@ -158,23 +155,20 @@ class _CameraState extends State<Camera>
       ),
     );
 
-    // Give UI time to render dialog
     await Future.delayed(const Duration(milliseconds: 100));
 
-    List<PredictionResult> results;
+    FoodDetectionOutput output;
 
     try {
-      results = await _detector.predict(imageFile);
+      output = await _detector.predict(imageFile);
     } catch (e) {
       if (!mounted) return;
-
       Navigator.pop(context);
       _showError('Prediction failed: $e');
       return;
     }
 
     if (!mounted) return;
-
     Navigator.pop(context);
 
     Navigator.push(
@@ -182,7 +176,8 @@ class _CameraState extends State<Camera>
       MaterialPageRoute(
         builder: (_) => ResultScreen(
           image: imageFile,
-          results: results,
+          results: output.results,
+          annotatedImageBytes: output.annotatedImageBytes,
         ),
       ),
     );
@@ -285,7 +280,6 @@ class _CameraState extends State<Camera>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          // Gallery button
                           GestureDetector(
                             onTap: _pickFromGallery,
                             child: Container(
@@ -301,8 +295,6 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
-
-                          // Shutter button
                           GestureDetector(
                             onTap: _captureImage,
                             child: Container(
@@ -323,7 +315,6 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
-
                           const SizedBox(width: 56),
                         ],
                       ),
