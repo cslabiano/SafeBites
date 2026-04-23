@@ -423,9 +423,9 @@ class _DetectionPainter extends CustomPainter {
         ..strokeWidth = 2.5
         ..style = PaintingStyle.stroke;
 
-      final fillPaint = Paint()
-        ..color = color.withOpacity(0.12)
-        ..style = PaintingStyle.fill;
+      // final fillPaint = Paint()
+      //   ..color = color.withOpacity(0.12)
+      //   ..style = PaintingStyle.fill;
 
       final labelBgPaint = Paint()
         ..color = color
