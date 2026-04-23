@@ -134,15 +134,48 @@ class _CameraState extends State<Camera>
   }
 
   Future<void> _runPrediction(File imageFile) async {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.black87,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Text(
+            "Analyzing...",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Give UI time to render dialog
+    await Future.delayed(const Duration(milliseconds: 100));
+
     List<PredictionResult> results;
+
     try {
       results = await _detector.predict(imageFile);
     } catch (e) {
+      if (!mounted) return;
+
+      Navigator.pop(context);
       _showError('Prediction failed: $e');
       return;
     }
 
     if (!mounted) return;
+
+    Navigator.pop(context);
 
     Navigator.push(
       context,
@@ -244,20 +277,6 @@ class _CameraState extends State<Camera>
                               SizedBox(height: 8),
                               Text(
                                 'Loading model...',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (_isProcessing)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 16),
-                          child: Column(
-                            children: [
-                              CircularProgressIndicator(color: Colors.white),
-                              SizedBox(height: 8),
-                              Text(
-                                'Analyzing...',
                                 style: TextStyle(color: Colors.white),
                               ),
                             ],
