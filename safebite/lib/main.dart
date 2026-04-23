@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'package:provider/provider.dart';
 import 'package:safebite/providers/avoided_allergens_provider.dart';
 
-import 'navbar.dart';
+import 'splash_screen.dart';
 
 late final List<CameraDescription> cameras;
 
@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: Navbar(cameras: cameras),
+      home: SplashScreen(cameras: cameras),
     );
   }
 }
