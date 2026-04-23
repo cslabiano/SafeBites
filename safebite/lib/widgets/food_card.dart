@@ -129,7 +129,7 @@ class FoodCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      ingredients,
+                      ingredients.split(',').map((e) => e.trim()).join(', '),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
