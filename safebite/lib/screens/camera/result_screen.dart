@@ -24,7 +24,8 @@ class ResultScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     final allTriggered = results.expand((r) => r.allergens).toSet().toList();
-    final hasAlert = allTriggered.isNotEmpty;
+    final hasResults = results.isNotEmpty;
+    final hasAlert = hasResults && allTriggered.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -55,63 +56,64 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: hasAlert
-                    ? const Color.fromRGBO(250, 227, 226, 1)
-                    : const Color.fromRGBO(230, 250, 238, 1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
+            if (hasResults)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
                   color: hasAlert
-                      ? const Color.fromRGBO(240, 200, 198, 1)
-                      : const Color.fromRGBO(191, 232, 207, 1),
+                      ? const Color.fromRGBO(250, 227, 226, 1)
+                      : const Color.fromRGBO(230, 250, 238, 1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: hasAlert
+                        ? const Color.fromRGBO(240, 200, 198, 1)
+                        : const Color.fromRGBO(191, 232, 207, 1),
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        hasAlert
-                            ? Icons.warning_amber_rounded
-                            : Icons.gpp_good_outlined,
-                        size: 20,
-                        color: hasAlert
-                            ? const Color.fromRGBO(220, 72, 56, 1)
-                            : const Color.fromRGBO(82, 167, 107, 1),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        hasAlert ? 'Allergen detected' : 'Looks safe for you',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          hasAlert
+                              ? Icons.warning_amber_rounded
+                              : Icons.gpp_good_outlined,
+                          size: 20,
                           color: hasAlert
                               ? const Color.fromRGBO(220, 72, 56, 1)
                               : const Color.fromRGBO(82, 167, 107, 1),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    hasAlert
-                        ? 'Identified dish contains: ${allTriggered.join(", ")}.'
-                        : 'No conflicts with your selected allergens.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: hasAlert
-                          ? const Color.fromRGBO(213, 67, 57, 1)
-                          : const Color.fromRGBO(82, 167, 107, 1),
+                        const SizedBox(width: 8),
+                        Text(
+                          hasAlert ? 'Allergen detected' : 'Looks safe for you',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: hasAlert
+                                ? const Color.fromRGBO(220, 72, 56, 1)
+                                : const Color.fromRGBO(82, 167, 107, 1),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      hasAlert
+                          ? 'Identified dish contains: ${allTriggered.join(", ")}.'
+                          : 'No conflicts with your selected allergens.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: hasAlert
+                            ? const Color.fromRGBO(213, 67, 57, 1)
+                            : const Color.fromRGBO(82, 167, 107, 1),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 24),
             Text(
               'IDENTIFIED ${results.length > 1 ? "DISHES" : "DISH"}',
