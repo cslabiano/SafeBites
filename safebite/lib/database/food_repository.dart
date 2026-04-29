@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import 'database_helper.dart';
 import '../models/food.dart';
 import '../models/prediction_result.dart';

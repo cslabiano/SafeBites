@@ -62,7 +62,7 @@ class FeaturedSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // ✅ Sort allergens for display
+    // Sort allergens for display
     final sortedAllergens = List<Map<String, dynamic>>.from(allergens)
       ..sort((a, b) {
         final aName = a['name']?.toString() ?? '';
@@ -91,7 +91,7 @@ class FeaturedSection extends StatelessWidget {
             const SizedBox(width: 4),
             Expanded(
               child: Text(
-                'AVOID THESE ALLERGENS',
+                'CHOOSE ALLERGENS TO FILTER',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -181,7 +181,7 @@ class FeaturedSection extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Text(
-              "Today's Featured Foods",
+              "Today's Featured Food Items",
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

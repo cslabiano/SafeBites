@@ -3,29 +3,23 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/prediction_result.dart';
+import '../../providers/avoided_allergens_provider.dart';
 import '../allergens/allergen_emoji.dart';
 
-/// Colors used for bounding-box strokes, label backgrounds, and card borders.
 const List<Color> _kDetectionPalette = [
-  Color(0xFF2979FF), // vivid blue
-  Color(0xFFFF6D00), // vivid orange
-  Color(0xFFD500F9), // vivid purple
-  Color(0xFF00BCD4), // vivid cyan
-  Color(0xFFFFD600), // vivid yellow
+  Color(0xFF2979FF),
+  Color(0xFFFF6D00),
+  Color(0xFFD500F9),
+  Color(0xFF00BCD4),
+  Color(0xFFFFD600),
 ];
 
-/// Opacity of the mask PNG overlay.
 const double _kMaskLayerOpacity = 0.6;
-
-/// Bounding-box stroke width in logical pixels.
 const double _kBoxStrokeWidth = 2.5;
-
-/// Font size for the in-image label (food name + confidence).
 const double _kLabelFontSize = 9.0;
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 Color getDetectionColor(int index) =>
     _kDetectionPalette[index % _kDetectionPalette.length];
@@ -51,11 +45,23 @@ class ResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final theme = Theme.of(context);
 
-    final allTriggered = results.expand((r) => r.allergens).toSet().toList();
+    final avoidedProvider = context.watch<AvoidedAllergensProvider>();
+
+    final allDetectedAllergens =
+        results.expand((r) => r.allergens).toSet().toList();
+
+    final avoidedDetectedAllergens = allDetectedAllergens
+        .where((a) => avoidedProvider.isAvoided(a))
+        .toList();
+
     final hasResults = results.isNotEmpty;
-    final hasAlert = hasResults && allTriggered.isNotEmpty;
+
+    final hasConflict = allDetectedAllergens.any(
+      (a) => avoidedProvider.isAvoided(a),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -80,24 +86,18 @@ class ResultScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // Show at the full available width; height driven by the
-                  // original photo's true aspect ratio so there are no bars.
                   return FutureBuilder<double>(
                     future: _getImageAspectRatio(image),
                     initialData: 1.0,
                     builder: (context, snapshot) {
                       final aspectRatio = snapshot.data ?? 1.0;
+
                       return AspectRatio(
                         aspectRatio: aspectRatio,
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // Original photo — stretched to fill (same as model
-                            // pre-processing).
                             Image.file(image, fit: BoxFit.fill),
-
-                            // Mask PNG from the plugin — same 640×640 space,
-                            // same stretch.
                             if (maskPngBytes != null)
                               Opacity(
                                 opacity: _kMaskLayerOpacity,
@@ -106,9 +106,6 @@ class ResultScreen extends StatelessWidget {
                                   fit: BoxFit.fill,
                                 ),
                               ),
-
-                            // Bounding boxes + labels drawn with normalised
-                            // coords × canvas size (no applyBoxFit needed).
                             CustomPaint(
                               painter: _DetectionPainter(results: results),
                             ),
@@ -120,21 +117,18 @@ class ResultScreen extends StatelessWidget {
                 },
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // ── Allergen alert banner ────────────────────────────────────────
             if (hasResults)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: hasAlert
+                  color: hasConflict
                       ? const Color.fromRGBO(250, 227, 226, 1)
                       : const Color.fromRGBO(230, 250, 238, 1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: hasAlert
+                    color: hasConflict
                         ? const Color.fromRGBO(240, 200, 198, 1)
                         : const Color.fromRGBO(191, 232, 207, 1),
                   ),
@@ -145,47 +139,52 @@ class ResultScreen extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          hasAlert
+                          hasConflict
                               ? Icons.warning_amber_rounded
                               : Icons.gpp_good_outlined,
                           size: 20,
-                          color: hasAlert
+                          color: hasConflict
                               ? const Color.fromRGBO(220, 72, 56, 1)
                               : const Color.fromRGBO(82, 167, 107, 1),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          hasAlert ? 'Allergen detected' : 'Looks safe for you',
+                          hasConflict
+                              ? 'Potential allergen'
+                              : 'Looks safe for you',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
-                            color: hasAlert
+                            color: hasConflict
                                 ? const Color.fromRGBO(220, 72, 56, 1)
                                 : const Color.fromRGBO(82, 167, 107, 1),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      hasAlert
-                          ? 'Identified dish contains: ${allTriggered.join(", ")}.'
-                          : 'No conflicts with your selected allergens.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.4,
-                        color: hasAlert
-                            ? const Color.fromRGBO(213, 67, 57, 1)
-                            : const Color.fromRGBO(82, 167, 107, 1),
+                    const SizedBox(height: 2),
+                    Padding(
+                      padding:
+                          EdgeInsets.fromLTRB(screenWidth * 0.075, 0, 0, 0),
+                      child: Text(
+                        hasConflict
+                            ? 'Potential allergens: ${allDetectedAllergens.join(", ")}.\nYou are avoiding: ${avoidedDetectedAllergens.join(", ")}.'
+                            : allDetectedAllergens.isEmpty
+                                ? 'No allergens detected.'
+                                : 'Potential allergens: ${allDetectedAllergens.join(", ")}.\nNo conflict with your selected allergens.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.4,
+                          color: hasConflict
+                              ? const Color.fromRGBO(213, 67, 57, 1)
+                              : const Color.fromRGBO(82, 167, 107, 1),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-
             const SizedBox(height: 24),
-
-            // ── Section heading ──────────────────────────────────────────────
             Text(
               'IDENTIFIED ${results.length > 1 ? "DISHES" : "DISH"}',
               style: TextStyle(
@@ -196,8 +195,6 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-
-            // ── Result cards ─────────────────────────────────────────────────
             if (results.isEmpty)
               Container(
                 width: double.infinity,
@@ -271,7 +268,7 @@ class ResultScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      "${(result.confidence * 100).toStringAsFixed(1)}% match",
+                                      "${(result.confidence * 100).toStringAsFixed(1)}% confidence",
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -326,17 +323,18 @@ class ResultScreen extends StatelessWidget {
                               spacing: 6,
                               runSpacing: 6,
                               children: result.allergens.map((a) {
+                                final isAvoided = avoidedProvider.isAvoided(a);
+
                                 return Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
+                                    horizontal: 12,
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.secondary,
+                                    color: isAvoided
+                                        ? const Color.fromRGBO(250, 227, 226, 1)
+                                        : theme.colorScheme.secondary,
                                     borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -354,9 +352,13 @@ class ResultScreen extends StatelessWidget {
                                       const SizedBox(width: 4),
                                       Text(
                                         a,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
+                                          color: isAvoided
+                                              ? const Color.fromRGBO(
+                                                  213, 67, 57, 1)
+                                              : null,
                                         ),
                                       ),
                                     ],
@@ -376,16 +378,16 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
-  /// Reads the image's true pixel dimensions and returns width/height.
-  /// Used to set the AspectRatio widget so the photo fills the card without
-  /// black bars, while still applying BoxFit.fill for the overlay alignment.
   Future<double> _getImageAspectRatio(File file) async {
     final bytes = await file.readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
+
     final w = frame.image.width.toDouble();
     final h = frame.image.height.toDouble();
+
     frame.image.dispose();
+
     return (w > 0 && h > 0) ? w / h : 1.0;
   }
 }
@@ -400,20 +402,18 @@ class _DetectionPainter extends CustomPainter {
     for (int i = 0; i < results.length; i++) {
       final result = results[i];
       final box = result.boundingBox;
+
       if (box == null) continue;
 
       final color = getDetectionColor(i);
 
-      // Normalised [0..1] coords × canvas size = screen pixel position.
-      // This matches exactly what BoxFit.fill does to the image and mask PNG.
-      final left   = box.x1 * size.width;
-      final top    = box.y1 * size.height;
-      final right  = box.x2 * size.width;
+      final left = box.x1 * size.width;
+      final top = box.y1 * size.height;
+      final right = box.x2 * size.width;
       final bottom = box.y2 * size.height;
 
       final rect = Rect.fromLTRB(left, top, right, bottom);
 
-      // ── Bounding box stroke ──────────────────────────────────────────────
       canvas.drawRect(
         rect,
         Paint()
@@ -422,14 +422,13 @@ class _DetectionPainter extends CustomPainter {
           ..style = PaintingStyle.stroke,
       );
 
-      // ── Label badge ──────────────────────────────────────────────────────
       final labelText =
           '${result.label} ${(result.confidence * 100).toStringAsFixed(1)}%';
 
       final textPainter = TextPainter(
         text: TextSpan(
           text: labelText,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: _kLabelFontSize,
             fontWeight: FontWeight.w600,
@@ -440,22 +439,25 @@ class _DetectionPainter extends CustomPainter {
 
       const hPad = 5.0;
       const vPad = 3.0;
+
       final labelW = textPainter.width + hPad * 2;
       final labelH = textPainter.height + vPad * 2;
 
-      // Prefer above the box; fall back to just inside the top edge if there
-      // is no room above.
       double labelTop = top - labelH;
       if (labelTop < 0) labelTop = top;
 
-      // Keep the pill within canvas bounds horizontally.
       double labelLeft = left;
       if (labelLeft + labelW > size.width) {
         labelLeft = size.width - labelW;
       }
       if (labelLeft < 0) labelLeft = 0;
 
-      final labelRect = Rect.fromLTWH(labelLeft, labelTop, labelW, labelH);
+      final labelRect = Rect.fromLTWH(
+        labelLeft,
+        labelTop,
+        labelW,
+        labelH,
+      );
 
       canvas.drawRect(
         labelRect,
@@ -464,11 +466,15 @@ class _DetectionPainter extends CustomPainter {
           ..style = PaintingStyle.fill,
       );
 
-      textPainter.paint(canvas, Offset(labelLeft + hPad, labelTop + vPad));
+      textPainter.paint(
+        canvas,
+        Offset(labelLeft + hPad, labelTop + vPad),
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _DetectionPainter oldDelegate) =>
-      oldDelegate.results != results;
+  bool shouldRepaint(covariant _DetectionPainter oldDelegate) {
+    return oldDelegate.results != results;
+  }
 }
