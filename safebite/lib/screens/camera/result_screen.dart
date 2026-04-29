@@ -7,40 +7,46 @@ import 'package:flutter/material.dart';
 import '../../models/prediction_result.dart';
 import '../allergens/allergen_emoji.dart';
 
-Color getDetectionColor(int index) {
-  const palette = [
-    Color(0xFF4E9AF1),
-    Color(0xFF9D5CE0),
-    Color(0xFFE0B05C),
-    Color(0xFF5C7CE0),
-    Color(0xFFE05CB8),
-    Color(0xFF5CC2E0),
-    Color(0xFFC0A05C),
-  ];
+/// Colors used for bounding-box strokes, label backgrounds, and card borders.
+const List<Color> _kDetectionPalette = [
+  Color(0xFF2979FF), // vivid blue
+  Color(0xFFFF6D00), // vivid orange
+  Color(0xFFD500F9), // vivid purple
+  Color(0xFF00BCD4), // vivid cyan
+  Color(0xFFFFD600), // vivid yellow
+];
 
-  return palette[index % palette.length];
-}
+/// Opacity of the mask PNG overlay.
+const double _kMaskLayerOpacity = 0.6;
+
+/// Bounding-box stroke width in logical pixels.
+const double _kBoxStrokeWidth = 2.5;
+
+/// Font size for the in-image label (food name + confidence).
+const double _kLabelFontSize = 9.0;
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+Color getDetectionColor(int index) =>
+    _kDetectionPalette[index % _kDetectionPalette.length];
 
 class ResultScreen extends StatelessWidget {
   final File image;
   final List<PredictionResult> results;
+  final Uint8List? annotatedImageBytes;
+  final Uint8List? maskPngBytes;
 
   const ResultScreen({
     super.key,
     required this.image,
     required this.results,
+    this.annotatedImageBytes,
+    this.maskPngBytes,
   });
 
   String _getFoodEmoji(List<String> allergenLabels) {
     if (allergenLabels.isEmpty) return '🍜';
     return AllergenEmoji.get(allergenLabels.first);
-  }
-
-  Future<ui.Image> _loadUiImage(File file) async {
-    final Uint8List bytes = await file.readAsBytes();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    return frame.image;
   }
 
   @override
@@ -72,51 +78,52 @@ class ResultScreen extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxHeight: 520,
-                  minHeight: 220,
-                ),
-                child: FutureBuilder<ui.Image>(
-                  future: _loadUiImage(image),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return Container(
-                        width: double.infinity,
-                        height: 220,
-                        color: Colors.black12,
-                      );
-                    }
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Show at the full available width; height driven by the
+                  // original photo's true aspect ratio so there are no bars.
+                  return FutureBuilder<double>(
+                    future: _getImageAspectRatio(image),
+                    initialData: 1.0,
+                    builder: (context, snapshot) {
+                      final aspectRatio = snapshot.data ?? 1.0;
+                      return AspectRatio(
+                        aspectRatio: aspectRatio,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // Original photo — stretched to fill (same as model
+                            // pre-processing).
+                            Image.file(image, fit: BoxFit.fill),
 
-                    final imageWidth = snapshot.data!.width.toDouble();
-                    final imageHeight = snapshot.data!.height.toDouble();
-                    final aspectRatio = imageWidth / imageHeight;
+                            // Mask PNG from the plugin — same 640×640 space,
+                            // same stretch.
+                            if (maskPngBytes != null)
+                              Opacity(
+                                opacity: _kMaskLayerOpacity,
+                                child: Image.memory(
+                                  maskPngBytes!,
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
 
-                    return AspectRatio(
-                      aspectRatio: aspectRatio,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.file(
-                            image,
-                            fit: BoxFit.contain,
-                          ),
-                          CustomPaint(
-                            painter: _DetectionPainter(
-                              results: results,
-                              imageWidth: imageWidth,
-                              imageHeight: imageHeight,
-                              fit: BoxFit.contain,
+                            // Bounding boxes + labels drawn with normalised
+                            // coords × canvas size (no applyBoxFit needed).
+                            CustomPaint(
+                              painter: _DetectionPainter(results: results),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
+
             const SizedBox(height: 20),
+
+            // ── Allergen alert banner ────────────────────────────────────────
             if (hasResults)
               Container(
                 width: double.infinity,
@@ -175,7 +182,10 @@ class ResultScreen extends StatelessWidget {
                   ],
                 ),
               ),
+
             const SizedBox(height: 24),
+
+            // ── Section heading ──────────────────────────────────────────────
             Text(
               'IDENTIFIED ${results.length > 1 ? "DISHES" : "DISH"}',
               style: TextStyle(
@@ -186,6 +196,8 @@ class ResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+
+            // ── Result cards ─────────────────────────────────────────────────
             if (results.isEmpty)
               Container(
                 width: double.infinity,
@@ -211,10 +223,11 @@ class ResultScreen extends StatelessWidget {
 
                   return Container(
                     decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: color.withOpacity(0.4), // colored border
-                        width: 1.2,
+                        color: color.withOpacity(0.4),
+                        width: 3,
                       ),
                     ),
                     child: Padding(
@@ -362,125 +375,100 @@ class ResultScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// Reads the image's true pixel dimensions and returns width/height.
+  /// Used to set the AspectRatio widget so the photo fills the card without
+  /// black bars, while still applying BoxFit.fill for the overlay alignment.
+  Future<double> _getImageAspectRatio(File file) async {
+    final bytes = await file.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final w = frame.image.width.toDouble();
+    final h = frame.image.height.toDouble();
+    frame.image.dispose();
+    return (w > 0 && h > 0) ? w / h : 1.0;
+  }
 }
 
 class _DetectionPainter extends CustomPainter {
   final List<PredictionResult> results;
-  final double imageWidth;
-  final double imageHeight;
-  final BoxFit fit;
 
-  _DetectionPainter({
-    required this.results,
-    required this.imageWidth,
-    required this.imageHeight,
-    required this.fit,
-  });
+  const _DetectionPainter({required this.results});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final List<Color> palette = [
-      const Color(0xFF4E9AF1),
-      const Color(0xFF9D5CE0),
-      const Color(0xFFE0B05C),
-      const Color(0xFF5C7CE0),
-      const Color(0xFFE05CB8),
-      const Color(0xFF5CC2E0),
-      const Color(0xFFC0A05C),
-    ];
-
-    final fitted = applyBoxFit(
-      fit,
-      Size(imageWidth, imageHeight),
-      size,
-    );
-
-    final src = Alignment.center.inscribe(
-      fitted.source,
-      Offset.zero & Size(imageWidth, imageHeight),
-    );
-
-    final dst = Alignment.center.inscribe(
-      fitted.destination,
-      Offset.zero & size,
-    );
-
-    final scaleX = dst.width / src.width;
-    final scaleY = dst.height / src.height;
-
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-
     for (int i = 0; i < results.length; i++) {
       final result = results[i];
       final box = result.boundingBox;
       if (box == null) continue;
 
-      final color = palette[i % palette.length];
+      final color = getDetectionColor(i);
 
-      final boxPaint = Paint()
-        ..color = color
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke;
-
-      // final fillPaint = Paint()
-      //   ..color = color.withOpacity(0.12)
-      //   ..style = PaintingStyle.fill;
-
-      final labelBgPaint = Paint()
-        ..color = color
-        ..style = PaintingStyle.fill;
-
-      final left = dst.left + ((box.x1 * imageWidth) - src.left) * scaleX;
-      final top = dst.top + ((box.y1 * imageHeight) - src.top) * scaleY;
-      final right = dst.left + ((box.x2 * imageWidth) - src.left) * scaleX;
-      final bottom = dst.top + ((box.y2 * imageHeight) - src.top) * scaleY;
+      // Normalised [0..1] coords × canvas size = screen pixel position.
+      // This matches exactly what BoxFit.fill does to the image and mask PNG.
+      final left   = box.x1 * size.width;
+      final top    = box.y1 * size.height;
+      final right  = box.x2 * size.width;
+      final bottom = box.y2 * size.height;
 
       final rect = Rect.fromLTRB(left, top, right, bottom);
 
-      // canvas.drawRect(rect, fillPaint);
-      canvas.drawRect(rect, boxPaint);
+      // ── Bounding box stroke ──────────────────────────────────────────────
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = color
+          ..strokeWidth = _kBoxStrokeWidth
+          ..style = PaintingStyle.stroke,
+      );
 
+      // ── Label badge ──────────────────────────────────────────────────────
       final labelText =
           '${result.label} ${(result.confidence * 100).toStringAsFixed(1)}%';
 
       final textPainter = TextPainter(
         text: TextSpan(
           text: labelText,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 11,
+            fontSize: _kLabelFontSize,
             fontWeight: FontWeight.w600,
           ),
         ),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: size.width * 0.8);
 
-      const padding = 6.0;
-      final labelHeight = textPainter.height + 6;
+      const hPad = 5.0;
+      const vPad = 3.0;
+      final labelW = textPainter.width + hPad * 2;
+      final labelH = textPainter.height + vPad * 2;
 
-      double labelTop = top - labelHeight;
+      // Prefer above the box; fall back to just inside the top edge if there
+      // is no room above.
+      double labelTop = top - labelH;
       if (labelTop < 0) labelTop = top;
 
-      final labelRect = Rect.fromLTWH(
-        left,
-        labelTop,
-        textPainter.width + padding * 2,
-        labelHeight,
+      // Keep the pill within canvas bounds horizontally.
+      double labelLeft = left;
+      if (labelLeft + labelW > size.width) {
+        labelLeft = size.width - labelW;
+      }
+      if (labelLeft < 0) labelLeft = 0;
+
+      final labelRect = Rect.fromLTWH(labelLeft, labelTop, labelW, labelH);
+
+      canvas.drawRect(
+        labelRect,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill,
       );
 
-      canvas.drawRect(labelRect, labelBgPaint);
-      textPainter.paint(canvas, Offset(left + padding, labelTop + 3));
+      textPainter.paint(canvas, Offset(labelLeft + hPad, labelTop + vPad));
     }
-
-    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _DetectionPainter oldDelegate) {
-    return oldDelegate.results != results ||
-        oldDelegate.imageWidth != imageWidth ||
-        oldDelegate.imageHeight != imageHeight ||
-        oldDelegate.fit != fit;
-  }
+  bool shouldRepaint(covariant _DetectionPainter oldDelegate) =>
+      oldDelegate.results != results;
 }

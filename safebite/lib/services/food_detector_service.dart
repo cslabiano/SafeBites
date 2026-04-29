@@ -1,20 +1,24 @@
 import 'dart:io';
-import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
-import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 import '../models/prediction_result.dart';
 import 'database_service.dart';
 
 class FoodDetectorService {
-  Interpreter? _interpreter;
+  YOLO? _yolo;
   List<String> _labels = [];
 
-  static const int _inputSize = 640;
   static const double _confThreshold = 0.45;
   static const double _iouThreshold = 0.45;
   static const int _maxDetections = 5;
+
+  // The model always runs on a 640×640 input. Every coordinate the plugin
+  // returns is in that space, so we always divide by 640 to normalise.
+  static const double _inferenceSize = 640.0;
 
   Future<void> loadModel() async {
     final labelData = await rootBundle.loadString('assets/models/labels.txt');
@@ -24,265 +28,172 @@ class FoodDetectorService {
         .where((l) => l.isNotEmpty)
         .toList();
 
-    _interpreter = await Interpreter.fromAsset(
-      'assets/models/best_float32.tflite',
-      options: InterpreterOptions()
-        ..threads = 4
-        ..useNnApiForAndroid = false,
+    _yolo = YOLO(
+      modelPath: 'best_float32.tflite',
+      task: YOLOTask.segment,
     );
 
-    _interpreter!.allocateTensors();
+    await _yolo!.loadModel();
   }
 
-  Future<List<PredictionResult>> predict(File imageFile) async {
-    if (_interpreter == null) throw Exception('Model not loaded');
+  /// Resize the photo to exactly 640×640 — the same pre-processing the model
+  /// expects. If we only fix the width (as before), portrait images end up
+  /// taller than 640 px and all Y-coordinates come back in that taller space,
+  /// but we still divide by 640, so every box is shifted downward.
+  Future<Uint8List> _resizeImageForInference(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
 
-    final rawBytes = await imageFile.readAsBytes();
-    final original = img.decodeImage(rawBytes);
-    if (original == null) throw Exception('Could not decode image');
-
-    final origW = original.width;
-    final origH = original.height;
-
-    // Letterbox instead of stretching.
-    final scale = min(_inputSize / origW, _inputSize / origH);
-    final resizedW = (origW * scale).round();
-    final resizedH = (origH * scale).round();
-    final padX = ((_inputSize - resizedW) / 2).floor();
-    final padY = ((_inputSize - resizedH) / 2).floor();
-
-    final resized = img.copyResize(
-      original,
-      width: resizedW,
-      height: resizedH,
-      interpolation: img.Interpolation.linear,
+    final codec = await ui.instantiateImageCodec(
+      bytes,
+      targetWidth: _inferenceSize.toInt(),
+      targetHeight: _inferenceSize.toInt(),
     );
 
-    final letterboxed = img.Image(
-      width: _inputSize,
-      height: _inputSize,
-      numChannels: 3,
-    );
-    img.fill(letterboxed, color: img.ColorRgb8(114, 114, 114));
-    img.compositeImage(letterboxed, resized, dstX: padX, dstY: padY);
-
-    final inputTensor = List.generate(
-      1,
-      (_) => List.generate(
-        _inputSize,
-        (y) => List.generate(
-          _inputSize,
-          (x) {
-            final pixel = letterboxed.getPixel(x, y);
-            return [
-              pixel.r / 255.0,
-              pixel.g / 255.0,
-              pixel.b / 255.0,
-            ];
-          },
-        ),
-      ),
+    final frame = await codec.getNextFrame();
+    final byteData = await frame.image.toByteData(
+      format: ui.ImageByteFormat.png,
     );
 
-    final outputDetails = _interpreter!.getOutputTensors();
-    final out0Shape = outputDetails[0].shape;
-    final out1Shape = outputDetails[1].shape;
-
-    final output0 = _buildOutputBuffer(out0Shape);
-    final output1 = _buildOutputBuffer(out1Shape);
-
-    _interpreter!.runForMultipleInputs(
-      [inputTensor],
-      {0: output0, 1: output1},
-    );
-
-    return await _postProcess(
-      output0,
-      out0Shape,
-      resizedW: resizedW,
-      resizedH: resizedH,
-      padX: padX,
-      padY: padY,
-    );
+    if (byteData == null) return bytes;
+    return byteData.buffer.asUint8List();
   }
 
-  dynamic _buildOutputBuffer(List<int> shape) {
-    if (shape.length == 1) {
-      return List<double>.filled(shape[0], 0.0);
-    }
-    return List<dynamic>.generate(
-      shape[0],
-      (_) => _buildOutputBuffer(shape.sublist(1)),
+  Future<FoodDetectionOutput> predict(File imageFile) async {
+    if (_yolo == null) throw Exception('Model not loaded');
+
+    final Uint8List imageBytes = await _resizeImageForInference(imageFile);
+
+    final stopwatch = Stopwatch()..start();
+    final Map<String, dynamic> raw = await _yolo!.predict(
+      imageBytes,
+      confidenceThreshold: _confThreshold,
+      iouThreshold: _iouThreshold,
     );
-  }
+    stopwatch.stop();
+    print('!!! Inference time: ${stopwatch.elapsedMilliseconds} ms');
 
-  Future<List<PredictionResult>> _postProcess(
-    dynamic rawOutput,
-    List<int> shape, {
-    required int resizedW,
-    required int resizedH,
-    required int padX,
-    required int padY,
-  }) async {
-    final batch = rawOutput[0];
-    final numClasses = _labels.length;
-    final detections = <_Detection>[];
+    final Uint8List? maskPngBytes = raw['mask'] as Uint8List?;
+    final Uint8List? annotatedBytes = raw['annotatedImage'] as Uint8List?;
 
-    final bool anchorsLast = shape[1] < shape[2];
+    final List<dynamic> rawBoxes = (raw['boxes'] as List<dynamic>?) ?? [];
 
-    if (anchorsLast) {
-      final numAnchors = (batch[0] as List).length;
-      for (int a = 0; a < numAnchors; a++) {
-        double maxConf = 0;
-        int maxIdx = -1;
+    final sorted = rawBoxes
+        .cast<Map<String, dynamic>>()
+        .where((b) =>
+            ((b['confidence'] as num?)?.toDouble() ?? 0) >= _confThreshold)
+        .toList()
+      ..sort((a, b) => ((b['confidence'] as num?)?.toDouble() ?? 0)
+          .compareTo(((a['confidence'] as num?)?.toDouble() ?? 0)));
 
-        for (int c = 0; c < numClasses; c++) {
-          final score = (batch[4 + c] as List)[a] as double;
-          if (score > maxConf) {
-            maxConf = score;
-            maxIdx = c;
-          }
-        }
-
-        if (maxConf >= _confThreshold && maxIdx >= 0) {
-          detections.add(_Detection(
-            classIdx: maxIdx,
-            confidence: maxConf,
-            cx: (batch[0] as List)[a] as double,
-            cy: (batch[1] as List)[a] as double,
-            w: (batch[2] as List)[a] as double,
-            h: (batch[3] as List)[a] as double,
-          ));
-        }
-      }
-    } else {
-      final numAnchors = (batch as List).length;
-      for (int a = 0; a < numAnchors; a++) {
-        final anchor = batch[a] as List;
-        double maxConf = 0;
-        int maxIdx = -1;
-
-        for (int c = 0; c < numClasses; c++) {
-          final score = anchor[4 + c] as double;
-          if (score > maxConf) {
-            maxConf = score;
-            maxIdx = c;
-          }
-        }
-
-        if (maxConf >= _confThreshold && maxIdx >= 0) {
-          detections.add(_Detection(
-            classIdx: maxIdx,
-            confidence: maxConf,
-            cx: anchor[0] as double,
-            cy: anchor[1] as double,
-            w: anchor[2] as double,
-            h: anchor[3] as double,
-          ));
-        }
-      }
-    }
-
-    final kept = _nms(detections);
-    kept.sort((a, b) => b.confidence.compareTo(a.confidence));
-    final top = kept.take(_maxDetections).toList();
+    final top = sorted.take(_maxDetections).toList();
 
     final dbService = DatabaseService();
     final results = <PredictionResult>[];
 
-    for (final det in top) {
-      final label = _labels[det.classIdx];
+    for (final box in top) {
+      final String label = _getLabelFromBox(box);
+      final double confidence = (box['confidence'] as num?)?.toDouble() ?? 0.0;
+      final BoundingBox? bbox = _getNormalizedBoundingBox(box);
+
       final dbResult = await dbService.queryFood(label);
 
-      // Model output is normalized to 640x640 input.
-      final x1Input = (det.cx - det.w / 2) * _inputSize;
-      final y1Input = (det.cy - det.h / 2) * _inputSize;
-      final x2Input = (det.cx + det.w / 2) * _inputSize;
-      final y2Input = (det.cy + det.h / 2) * _inputSize;
-
-      // Undo letterbox padding, then normalize back to the original image.
-      final x1 = ((x1Input - padX) / resizedW).clamp(0.0, 1.0);
-      final y1 = ((y1Input - padY) / resizedH).clamp(0.0, 1.0);
-      final x2 = ((x2Input - padX) / resizedW).clamp(0.0, 1.0);
-      final y2 = ((y2Input - padY) / resizedH).clamp(0.0, 1.0);
-
-      results.add(PredictionResult(
-        label: label,
-        confidence: det.confidence,
-        ingredients: dbResult?.ingredients ?? [],
-        allergens: dbResult?.allergens ?? [],
-        foundInDatabase: dbResult != null,
-        boundingBox: BoundingBox(
-          x1: x1,
-          y1: y1,
-          x2: x2,
-          y2: y2,
+      results.add(
+        PredictionResult(
+          label: label,
+          confidence: confidence,
+          ingredients: dbResult?.ingredients ?? [],
+          allergens: dbResult?.allergens ?? [],
+          foundInDatabase: dbResult != null,
+          boundingBox: bbox,
+          maskPoints: const [],
         ),
-      ));
+      );
     }
 
-    return results;
+    return FoodDetectionOutput(
+      results: results,
+      annotatedImageBytes: annotatedBytes,
+      maskPngBytes: maskPngBytes,
+      imageWidth: _inferenceSize,
+      imageHeight: _inferenceSize,
+    );
   }
 
-  List<_Detection> _nms(List<_Detection> detections) {
-    detections.sort((a, b) => b.confidence.compareTo(a.confidence));
-    final kept = <_Detection>[];
-
-    for (final det in detections) {
-      bool suppressed = false;
-      for (final keep in kept) {
-        if (keep.classIdx == det.classIdx && _iou(det, keep) > _iouThreshold) {
-          suppressed = true;
-          break;
-        }
-      }
-      if (!suppressed) kept.add(det);
+  String _getLabelFromBox(Map<String, dynamic> box) {
+    final rawClassName = box['className'];
+    if (rawClassName is String && rawClassName.trim().isNotEmpty) {
+      return rawClassName.trim();
     }
 
-    return kept;
+    final rawClass = box['class'];
+
+    if (rawClass is int) {
+      return rawClass >= 0 && rawClass < _labels.length
+          ? _labels[rawClass]
+          : 'Unknown';
+    }
+
+    if (rawClass is double) {
+      final index = rawClass.toInt();
+      return index >= 0 && index < _labels.length ? _labels[index] : 'Unknown';
+    }
+
+    if (rawClass is String && rawClass.trim().isNotEmpty) {
+      return rawClass.trim();
+    }
+
+    return 'Unknown';
   }
 
-  double _iou(_Detection a, _Detection b) {
-    final ax1 = a.cx - a.w / 2;
-    final ay1 = a.cy - a.h / 2;
-    final ax2 = a.cx + a.w / 2;
-    final ay2 = a.cy + a.h / 2;
+  /// The plugin returns coordinates in the inference image's pixel space
+  /// (always 640×640 after the fix above). Divide by 640 to get [0..1].
+  BoundingBox? _getNormalizedBoundingBox(Map<String, dynamic> box) {
+    double? x1;
+    double? y1;
+    double? x2;
+    double? y2;
 
-    final bx1 = b.cx - b.w / 2;
-    final by1 = b.cy - b.h / 2;
-    final bx2 = b.cx + b.w / 2;
-    final by2 = b.cy + b.h / 2;
+    if (box.containsKey('x1')) {
+      x1 = (box['x1'] as num).toDouble();
+      y1 = (box['y1'] as num).toDouble();
+      x2 = (box['x2'] as num).toDouble();
+      y2 = (box['y2'] as num).toDouble();
+    } else if (box.containsKey('left')) {
+      x1 = (box['left'] as num).toDouble();
+      y1 = (box['top'] as num).toDouble();
+      x2 = (box['right'] as num).toDouble();
+      y2 = (box['bottom'] as num).toDouble();
+    }
 
-    final interX1 = max(ax1, bx1);
-    final interY1 = max(ay1, by1);
-    final interX2 = min(ax2, bx2);
-    final interY2 = min(ay2, by2);
+    if (x1 == null || y1 == null || x2 == null || y2 == null) return null;
 
-    final interW = max(0.0, interX2 - interX1);
-    final interH = max(0.0, interY2 - interY1);
-    final intersection = interW * interH;
-
-    final union = a.w * a.h + b.w * b.h - intersection;
-    return union == 0 ? 0 : intersection / union;
+    // Both axes are now in 640-space (width AND height were fixed to 640).
+    return BoundingBox(
+      x1: (x1 / _inferenceSize).clamp(0.0, 1.0),
+      y1: (y1 / _inferenceSize).clamp(0.0, 1.0),
+      x2: (x2 / _inferenceSize).clamp(0.0, 1.0),
+      y2: (y2 / _inferenceSize).clamp(0.0, 1.0),
+    );
   }
 
   void close() {
-    _interpreter?.close();
-    _interpreter = null;
+    _yolo?.dispose();
+    _yolo = null;
   }
 }
 
-class _Detection {
-  final int classIdx;
-  final double confidence;
-  final double cx, cy, w, h;
+class FoodDetectionOutput {
+  final List<PredictionResult> results;
+  final Uint8List? annotatedImageBytes;
+  final Uint8List? maskPngBytes;
+  final double imageWidth;
+  final double imageHeight;
 
-  _Detection({
-    required this.classIdx,
-    required this.confidence,
-    required this.cx,
-    required this.cy,
-    required this.w,
-    required this.h,
+  const FoodDetectionOutput({
+    required this.results,
+    this.annotatedImageBytes,
+    this.maskPngBytes,
+    required this.imageWidth,
+    required this.imageHeight,
   });
 }
