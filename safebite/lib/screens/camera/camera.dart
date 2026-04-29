@@ -27,6 +27,7 @@ class _CameraState extends State<Camera>
   final ImagePicker _imagePicker = ImagePicker();
   final FoodDetectorService _detector = FoodDetectorService();
 
+  bool _isFlashOn = false;
   bool _isProcessing = false;
   bool _isModelLoading = true;
   String? _modelError;
@@ -38,6 +39,22 @@ class _CameraState extends State<Camera>
   void initState() {
     super.initState();
     _initializeAll();
+  }
+
+  Future<void> _toggleFlash() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    try {
+      _isFlashOn = !_isFlashOn;
+
+      await _controller!.setFlashMode(
+        _isFlashOn ? cam.FlashMode.torch : cam.FlashMode.off,
+      );
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      _showError('Flash is not available on this device.');
+    }
   }
 
   Future<void> _initializeAll() async {
@@ -192,6 +209,7 @@ class _CameraState extends State<Camera>
 
   @override
   void dispose() {
+    _controller?.setFlashMode(cam.FlashMode.off);
     _controller?.dispose();
     _detector.close();
     super.dispose();
@@ -315,7 +333,26 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
-                          const SizedBox(width: 56),
+                          Positioned(
+                            top: MediaQuery.of(context).padding.top + 16,
+                            right: 16,
+                            child: GestureDetector(
+                              onTap: _toggleFlash,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                                  color:
+                                      _isFlashOn ? Colors.yellow : Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ],
