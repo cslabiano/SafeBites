@@ -75,7 +75,7 @@ class _CameraState extends State<Camera>
 
     final controller = cam.CameraController(
       backCamera,
-      cam.ResolutionPreset.high,
+      cam.ResolutionPreset.medium,
       enableAudio: false,
     );
 
@@ -174,12 +174,12 @@ class _CameraState extends State<Camera>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ResultScreen(
-          image: imageFile,
-          results: output.results,
-          annotatedImageBytes: output.annotatedImageBytes,
-        ),
-      ),
+          builder: (_) => ResultScreen(
+                image: imageFile,
+                results: output.results,
+                annotatedImageBytes: output.annotatedImageBytes,
+                maskPngBytes: output.maskPngBytes,
+              )),
     );
   }
 

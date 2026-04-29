@@ -5,157 +5,60 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../models/prediction_result.dart';
-import '../../services/food_detector_service.dart';
 import '../allergens/allergen_emoji.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Fallback painter — used when annotatedImageBytes is null
+// 🎨 CUSTOMISE HERE
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _DetectionPainter extends CustomPainter {
-  final List<PredictionResult> results;
+/// Colors used for bounding-box strokes, label backgrounds, and card borders.
+const List<Color> _kDetectionPalette = [
+  Color(0xFF2979FF), // vivid blue
+  Color(0xFFFF6D00), // vivid orange
+  Color(0xFFD500F9), // vivid purple
+  Color(0xFF00BCD4), // vivid cyan
+  Color(0xFFFFD600), // vivid yellow
+];
 
-  _DetectionPainter({required this.results});
+/// Opacity of the mask PNG overlay.
+const double _kMaskLayerOpacity = 0.6;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (int i = 0; i < results.length; i++) {
-      _draw(canvas, size, results[i], FoodDetectorService.colorForClass(i));
-    }
-  }
+/// Bounding-box stroke width in logical pixels.
+const double _kBoxStrokeWidth = 2.5;
 
-  void _draw(
-      Canvas canvas, Size size, PredictionResult r, ui.Color color) {
-    // ── Mask ────────────────────────────────────────────────────────────
-    if (r.maskPoints.length >= 3) {
-      final fill = Paint()
-        ..color = color.withOpacity(0.28)
-        ..style = PaintingStyle.fill;
-      final stroke = Paint()
-        ..color = color.withOpacity(0.70)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8;
-
-      final path = Path()
-        ..moveTo(r.maskPoints[0].dx * size.width,
-            r.maskPoints[0].dy * size.height);
-      for (int i = 1; i < r.maskPoints.length; i++) {
-        path.lineTo(
-            r.maskPoints[i].dx * size.width, r.maskPoints[i].dy * size.height);
-      }
-      path.close();
-      canvas.drawPath(path, fill);
-      canvas.drawPath(path, stroke);
-    }
-
-    // ── Bounding box ────────────────────────────────────────────────────
-    final bbox = r.boundingBox;
-    if (bbox == null) return;
-
-    final rect = Rect.fromLTRB(
-      bbox.x1 * size.width,
-      bbox.y1 * size.height,
-      bbox.x2 * size.width,
-      bbox.y2 * size.height,
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.2,
-    );
-
-    // ── Label badge ─────────────────────────────────────────────────────
-    final text =
-        '${r.label}  ${(r.confidence * 100).toStringAsFixed(0)}%';
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    const hPad = 7.0, vPad = 4.0;
-    final bw = tp.width + hPad * 2;
-    final bh = tp.height + vPad * 2;
-    double bl = rect.left;
-    double bt = rect.top - bh - 2;
-    if (bt < 0) bt = rect.top + 2;
-    if (bl + bw > size.width) bl = size.width - bw - 2;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(bl, bt, bw, bh),
-        const Radius.circular(4),
-      ),
-      Paint()..color = color,
-    );
-    tp.paint(canvas, Offset(bl + hPad, bt + vPad));
-  }
-
-  @override
-  bool shouldRepaint(covariant _DetectionPainter old) => true;
-}
+/// Font size for the in-image label (food name + confidence).
+const double _kLabelFontSize = 9.0;
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Result screen
-// ─────────────────────────────────────────────────────────────────────────────
 
-class ResultScreen extends StatefulWidget {
+Color getDetectionColor(int index) =>
+    _kDetectionPalette[index % _kDetectionPalette.length];
+
+class ResultScreen extends StatelessWidget {
   final File image;
   final List<PredictionResult> results;
-
-  /// Pre-rendered image with boxes + masks drawn natively by ultralytics_yolo.
-  /// When non-null, this is shown instead of the raw image + painter overlay.
   final Uint8List? annotatedImageBytes;
+  final Uint8List? maskPngBytes;
 
   const ResultScreen({
     super.key,
     required this.image,
     required this.results,
     this.annotatedImageBytes,
+    this.maskPngBytes,
   });
 
-  @override
-  State<ResultScreen> createState() => _ResultScreenState();
-}
-
-class _ResultScreenState extends State<ResultScreen> {
-  /// Only needed for the fallback painter path (no annotatedImageBytes).
-  ui.Image? _uiImage;
-
-  @override
-  void initState() {
-    super.initState();
-    // Only decode the raw image if we have no native annotated version.
-    if (widget.annotatedImageBytes == null) _loadRawImage();
-  }
-
-  Future<void> _loadRawImage() async {
-    final bytes = await widget.image.readAsBytes();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    if (mounted) setState(() => _uiImage = frame.image);
-  }
-
-  String _getFoodEmoji(List<String> allergens) {
-    if (allergens.isEmpty) return '🍜';
-    return AllergenEmoji.get(allergens.first);
+  String _getFoodEmoji(List<String> allergenLabels) {
+    if (allergenLabels.isEmpty) return '🍜';
+    return AllergenEmoji.get(allergenLabels.first);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final allTriggered =
-        widget.results.expand((r) => r.allergens).toSet().toList();
-    final hasResults = widget.results.isNotEmpty;
+
+    final allTriggered = results.expand((r) => r.allergens).toSet().toList();
+    final hasResults = results.isNotEmpty;
     final hasAlert = hasResults && allTriggered.isNotEmpty;
 
     return Scaffold(
@@ -164,7 +67,10 @@ class _ResultScreenState extends State<ResultScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Scan result', style: TextStyle(fontSize: 16)),
+        title: const Text(
+          'Scan result',
+          style: TextStyle(fontSize: 16),
+        ),
         titleSpacing: 0,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -174,45 +80,54 @@ class _ResultScreenState extends State<ResultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Image with detection overlay ────────────────────────────
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // If the plugin returned a pre-annotated image, use it
-                    // directly (boxes + masks already drawn natively).
-                    if (widget.annotatedImageBytes != null)
-                      Image.memory(
-                        widget.annotatedImageBytes!,
-                        fit: BoxFit.cover,
-                      )
-                    else ...[
-                      // Fallback: raw image + Dart-side painter overlay
-                      Image.file(widget.image, fit: BoxFit.cover),
-                      if (_uiImage != null && widget.results.isNotEmpty)
-                        CustomPaint(
-                          painter:
-                              _DetectionPainter(results: widget.results),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Show at the full available width; height driven by the
+                  // original photo's true aspect ratio so there are no bars.
+                  return FutureBuilder<double>(
+                    future: _getImageAspectRatio(image),
+                    initialData: 1.0,
+                    builder: (context, snapshot) {
+                      final aspectRatio = snapshot.data ?? 1.0;
+                      return AspectRatio(
+                        aspectRatio: aspectRatio,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // Original photo — stretched to fill (same as model
+                            // pre-processing).
+                            Image.file(image, fit: BoxFit.fill),
+
+                            // Mask PNG from the plugin — same 640×640 space,
+                            // same stretch.
+                            if (maskPngBytes != null)
+                              Opacity(
+                                opacity: _kMaskLayerOpacity,
+                                child: Image.memory(
+                                  maskPngBytes!,
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
+
+                            // Bounding boxes + labels drawn with normalised
+                            // coords × canvas size (no applyBoxFit needed).
+                            CustomPaint(
+                              painter: _DetectionPainter(results: results),
+                            ),
+                          ],
                         ),
-                      if (_uiImage == null && widget.results.isNotEmpty)
-                        const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                    ],
-                  ],
-                ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // ── Alert banner ────────────────────────────────────────────
+            // ── Allergen alert banner ────────────────────────────────────────
             if (hasResults)
               Container(
                 width: double.infinity,
@@ -244,9 +159,7 @@ class _ResultScreenState extends State<ResultScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          hasAlert
-                              ? 'Allergen detected'
-                              : 'Looks safe for you',
+                          hasAlert ? 'Allergen detected' : 'Looks safe for you',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
@@ -276,8 +189,9 @@ class _ResultScreenState extends State<ResultScreen> {
 
             const SizedBox(height: 24),
 
+            // ── Section heading ──────────────────────────────────────────────
             Text(
-              'IDENTIFIED ${widget.results.length > 1 ? "DISHES" : "DISH"}',
+              'IDENTIFIED ${results.length > 1 ? "DISHES" : "DISH"}',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -287,8 +201,8 @@ class _ResultScreenState extends State<ResultScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── Detection cards ─────────────────────────────────────────
-            if (widget.results.isEmpty)
+            // ── Result cards ─────────────────────────────────────────────────
+            if (results.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -305,17 +219,20 @@ class _ResultScreenState extends State<ResultScreen> {
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.results.length,
+                itemCount: results.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final result = widget.results[index];
-                  final dotColor = FoodDetectorService.colorForClass(index);
+                  final result = results[index];
+                  final color = getDetectionColor(index);
 
                   return Container(
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(
+                        color: color.withOpacity(0.4),
+                        width: 3,
+                      ),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
@@ -325,17 +242,12 @@ class _ResultScreenState extends State<ResultScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Colour dot matches the overlay colour
                               Container(
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                  color: dotColor.withOpacity(0.18),
+                                  color: theme.colorScheme.secondary,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: dotColor.withOpacity(0.6),
-                                    width: 2,
-                                  ),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -403,14 +315,16 @@ class _ResultScreenState extends State<ResultScreen> {
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.5,
-                              color: theme.colorScheme.onSurface
-                                  .withOpacity(0.55),
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.55),
                             ),
                           ),
                           const SizedBox(height: 6),
                           if (result.allergens.isEmpty)
-                            const Text("None",
-                                style: TextStyle(fontSize: 13))
+                            const Text(
+                              "None",
+                              style: TextStyle(fontSize: 13),
+                            )
                           else
                             Wrap(
                               spacing: 6,
@@ -425,7 +339,8 @@ class _ResultScreenState extends State<ResultScreen> {
                                     color: theme.colorScheme.secondary,
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
-                                        color: Colors.grey.shade300),
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -464,4 +379,100 @@ class _ResultScreenState extends State<ResultScreen> {
       ),
     );
   }
+
+  /// Reads the image's true pixel dimensions and returns width/height.
+  /// Used to set the AspectRatio widget so the photo fills the card without
+  /// black bars, while still applying BoxFit.fill for the overlay alignment.
+  Future<double> _getImageAspectRatio(File file) async {
+    final bytes = await file.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final w = frame.image.width.toDouble();
+    final h = frame.image.height.toDouble();
+    frame.image.dispose();
+    return (w > 0 && h > 0) ? w / h : 1.0;
+  }
+}
+
+class _DetectionPainter extends CustomPainter {
+  final List<PredictionResult> results;
+
+  const _DetectionPainter({required this.results});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int i = 0; i < results.length; i++) {
+      final result = results[i];
+      final box = result.boundingBox;
+      if (box == null) continue;
+
+      final color = getDetectionColor(i);
+
+      // Normalised [0..1] coords × canvas size = screen pixel position.
+      // This matches exactly what BoxFit.fill does to the image and mask PNG.
+      final left   = box.x1 * size.width;
+      final top    = box.y1 * size.height;
+      final right  = box.x2 * size.width;
+      final bottom = box.y2 * size.height;
+
+      final rect = Rect.fromLTRB(left, top, right, bottom);
+
+      // ── Bounding box stroke ──────────────────────────────────────────────
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = color
+          ..strokeWidth = _kBoxStrokeWidth
+          ..style = PaintingStyle.stroke,
+      );
+
+      // ── Label badge ──────────────────────────────────────────────────────
+      final labelText =
+          '${result.label} ${(result.confidence * 100).toStringAsFixed(1)}%';
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: labelText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: _kLabelFontSize,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: size.width * 0.8);
+
+      const hPad = 5.0;
+      const vPad = 3.0;
+      final labelW = textPainter.width + hPad * 2;
+      final labelH = textPainter.height + vPad * 2;
+
+      // Prefer above the box; fall back to just inside the top edge if there
+      // is no room above.
+      double labelTop = top - labelH;
+      if (labelTop < 0) labelTop = top;
+
+      // Keep the pill within canvas bounds horizontally.
+      double labelLeft = left;
+      if (labelLeft + labelW > size.width) {
+        labelLeft = size.width - labelW;
+      }
+      if (labelLeft < 0) labelLeft = 0;
+
+      final labelRect = Rect.fromLTWH(labelLeft, labelTop, labelW, labelH);
+
+      canvas.drawRect(
+        labelRect,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill,
+      );
+
+      textPainter.paint(canvas, Offset(labelLeft + hPad, labelTop + vPad));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DetectionPainter oldDelegate) =>
+      oldDelegate.results != results;
 }
