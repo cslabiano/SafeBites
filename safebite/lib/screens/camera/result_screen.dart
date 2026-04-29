@@ -7,10 +7,6 @@ import 'package:flutter/material.dart';
 import '../../models/prediction_result.dart';
 import '../allergens/allergen_emoji.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 🎨 CUSTOMISE HERE
-// ─────────────────────────────────────────────────────────────────────────────
-
 /// Colors used for bounding-box strokes, label backgrounds, and card borders.
 const List<Color> _kDetectionPalette = [
   Color(0xFF2979FF), // vivid blue
