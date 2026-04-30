@@ -298,6 +298,7 @@ class _CameraState extends State<Camera>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
+                          // Gallery button
                           GestureDetector(
                             onTap: _pickFromGallery,
                             child: Container(
@@ -313,6 +314,8 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
+
+                          // Capture button
                           GestureDetector(
                             onTap: _captureImage,
                             child: Container(
@@ -333,23 +336,20 @@ class _CameraState extends State<Camera>
                               ),
                             ),
                           ),
-                          Positioned(
-                            top: MediaQuery.of(context).padding.top + 16,
-                            right: 16,
-                            child: GestureDetector(
-                              onTap: _toggleFlash,
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                                  color:
-                                      _isFlashOn ? Colors.yellow : Colors.white,
-                                  size: 28,
-                                ),
+
+                          GestureDetector(
+                            onTap: _toggleFlash,
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _isFlashOn ? Icons.flash_on : Icons.flash_off,
+                                color:
+                                    _isFlashOn ? Colors.yellow : Colors.white,
+                                size: 28,
                               ),
                             ),
                           ),
