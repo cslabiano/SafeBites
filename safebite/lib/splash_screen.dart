@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
       backgroundColor: theme.colorScheme.primary,
       body: Center(
         child: Text(
-          'SafeBite',
+          'SafeBites',
           style: TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.w700,

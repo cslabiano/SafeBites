@@ -9,7 +9,7 @@ class DashboardHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'SafeBite',
+          'SafeBites',
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 28,
